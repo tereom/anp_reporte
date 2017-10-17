@@ -35,3 +35,9 @@ Crea tablas para ANPs con variables: anp, eco (ecorregion), hectáreas.
 #### Salidas
 * datos_procesados/2017-10-07_ecorregion.RData
 * datos_procesados/2017-10-07_ecorregion_rings.RData
+
+
+## Pendiente
+* en el caso de que una ANP pertenezca a más de una ANP (con porcentajes no despreciables) hacer los análisis de ecorregión considerando las ANPs a las que pertenece, y también las tablas.
+
+* Agregar gráficas de ADI, cambiar escala de mapa IE, agregar tabla navegable
