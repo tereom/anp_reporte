@@ -2,3 +2,11 @@
 .Rhistory
 .RData
 .Ruserdata
+.tif
+.html
+.tsv
+.csv
+.png
+.DS_Store
+/datos_insumo
+/datos_procesados
