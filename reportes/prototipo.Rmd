@@ -1,15 +1,10 @@
 ---
 output: 
     html_document:
-        toc: true
-        toc_depth: 4
-        toc_float: true
-        collapsed: true
-        smooth_scroll: true
         css: estilo.css
 params:
-  mi_anp:
-    value: Cuatrociénegas
+    mi_anp:
+        value: Cuatrociénegas
 ---
 <!-- css -->
 
@@ -28,6 +23,7 @@ library(maptools)
 library(kableExtra)
 library(plotly)
 library(leaflet)
+
 knitr::opts_chunk$set(echo = FALSE, fig.align="center", message = FALSE, 
     warning = FALSE)
 comma <- function(x) format(x, digits = 3, big.mark = ",")
@@ -45,11 +41,13 @@ mi_anp_corto <- mi_anp_nombres$anp_corto
 mi_anp_print <- str_replace_all(mi_anp_nombres$anp, "_", " ")
 ```
 
-### ANP `r mi_anp_print `
+## ANP `r mi_anp_print ` {.tabset}
 
+### Descritpivos 
+
+#### Ecorregiones 
 
 ```{r, eval = TRUE}
-# path_anps_shp <- "/Volumes/MADMEX/eodata/footprints/anp/anp_sinBuffer/"
 path_anps_shp <- "../datos_insumo/shapes_anp/anp_sinBuffer/"
 
 mi_anp_shp_file <- list.files(path_anps_shp, 
@@ -62,8 +60,8 @@ mi_anp_shp <- readOGR(path_anps_shp, mi_anp_shp_file, verbose = FALSE)
 
 ```{r tabla_eco, eval = TRUE, echo = FALSE, message=FALSE}
 # por ahora cada ANP se asigna a una sola ecorregión, la más prevalente
-load("../datos_procesados/2017-10-20_ecorregion.RData")
-load("../datos_procesados/2017-10-20_ecorregion_rings.RData")
+load("../datos_procesados/2017-10-24_ecorregion.RData")
+load("../datos_procesados/2017-10-24_ecorregion_rings.RData")
 
 # asignamos la ecorregión más prevalente 
 anp_eco_df <- anp_eco_df %>% 
@@ -90,7 +88,7 @@ mis_anps <- anp_eco_df %>%
     filter(eco %in% mis_eco, hectareas >= 1000) %>% pull(anp) %>% union(mi_anp)
 
 anp_eco_table <- anp_eco_df %>% 
-    filter(anp %in% mis_anps, !(is.na(anp))) %>% 
+    filter(anp %in% mis_anps, !is.na(anp)) %>% 
     left_join(anp_rings_eco_df) %>% 
     mutate(
         hectareas = comma(round(hectareas)), 
@@ -115,8 +113,6 @@ anp_eco_table %>%
     # scroll_box(width = "100px", height = "200px", box_css = "float: right;") 
     # group_rows("Selvas Cálido-Húmedas", label_row_css = "color: #79797d;", 1, 37)
 ```
-
-#### Ecorregiones
 
 A lo largo del reporte los indicadores de la ANP objetivo se comparan con los 
 indicadores de otras ANPs de la misma ecorregión, esto se hace para poder contextuaizar 
@@ -243,7 +239,10 @@ cada una y la extensión de los anillos que las rodean.
 <div style="clear:both">
 </div>
 
-#### Cobertura de suelo   
+
+### Cobertura de suelo 
+
+#### Clases de cobertura
 
 ```{r tabla_madmex}
 madmex <- raster("../datos_insumo/madmex_nalc_10c_30m_2010.tif")
@@ -274,17 +273,18 @@ data.frame(round(prop.table(table(madmex_mi_anp_c)) * 100, 2)) %>%
         position = "float_right", font_size = 11, full_width = FALSE)
 ```
 
-Se utilizó un mapa con resolución espacial de 30 m^2^, construido a partir de 
+La clasificación de la cobertura de suelo se realiza con un algoritmo automatizado, 
+que genera un mapa con resolución espacial de 30 m^2^, construido a partir de 
 imágenes Landsat correspondientes al año 2010. Temáticamente se agregó para 
 contar con 10 clases:  bosques, selvas, matorrales, pastizal, 
 suelo desnudo, humedal, agricultura, asentamiento humano, agua y nieve/hielo.
 
-La tabla de la derecha nos muestra el porcentaje del área de la ANP `r mi_anp` que 
-pertence a cada clase de acuerdo al mapa 2010.
+La tabla de la derecha nos muestra el porcentaje del área de la ANP *`r mi_anp_print`* 
+que pertence a cada clase de acuerdo al mapa 2010.
 
 </br>
 
-Veamos la composición espacial de las clases en la ANP `r mi_anp`.
+Veamos la composición espacial de las clases en la ANP *`r mi_anp_print`*.
 
 ```{r madmex_mapa}
 ext <- raster::extent(mi_anp_shp)
@@ -308,7 +308,7 @@ leaflet(data = mi_anp_shp) %>%
 ```
 
 
-### Pérdida de cobertura boscosa
+#### Pérdida de cobertura boscosa
 <!--
 Utilizamos los datos de [Cambios en cobertura forestal](https://earthenginepartners.appspot.com/science-2013-global-forest) de 
 Hansen, Potapov, Moore, Hancher et al. Estos datos son resultado de análisis de 
@@ -338,11 +338,13 @@ leaflet(data = mi_anp_shp) %>%
 ```
 </br>
 
-Ahora veamos el impacto de pérdida año a año, y para cada tipo de 
-cobertura. En las gráficas de abajo la línea roja representa la pérdida como 
-porcentaje del área total del ANP, la línea azúl representa el porcentaje de 
-área perdida en el anillo y las líneas grises el equivalente en las ANPs de la 
-ecorregión. En la gráfica del lado izquierdo podemos leer los resultados a total mientras 
+Ahora veamos el impacto de la deforestación año a año, y para cada tipo de 
+cobertura.
+
+En las gráficas de abajo la línea roja representa la pérdida como porcentaje del 
+área total del ANP, la línea azúl representa el porcentaje de área perdida en el 
+anillo y las líneas grises el equivalente en las ANPs de la ecorregión. En la 
+gráfica del lado izquierdo podemos leer los resultados a total mientras 
 que los paneles del lado derecho cada cobertura de uso de suelo.
 
 ```{r deforestacion_tiempo, fig.width = 8, fig.height=4.5}
@@ -498,7 +500,7 @@ Adicionalmente, medimos la pérdida como el porcentaje del área total de cada
 ANP perdida por deforestación en los últimos 5 años de datos, en este caso entre 2011 y 2016.
 La tabla de la derecha muestra el promedio de la deforestación de las ANPs de
 cada ecorregión, en rosa se marcan aquellas ecorregiones presentes en la región 
-de la ANP `r mi_anp`.
+de la ANP *`r mi_anp_print`*.
 
 Una vez que calculamos el promedio de pérdida en cada ecorregión construimos
 el índice como la diferencia entre la pérdida de cada ANP y la pérdida promedio
@@ -540,7 +542,9 @@ ggplot(indice_deforestacion_cl,
 ```
 
 
-### Integridad Ecosistémica
+### Integridad y ACE
+
+#### Integridad ecosistémica
 
 La integridad ecosistémica se reporta mediante un índice construído en colaboración
 de CONABIO e INECOL. Este índice relaciona de manera integral varios aespectos 
@@ -604,10 +608,10 @@ ie_stats <- map_df(ie_list, ~data_frame(anp = .$anp, media = .$media,
 mi_anp_ie_stats <- filter(ie_stats, anp == mi_anp)
 ```
 
-El mapa de arriba nos da un panorama de la integridad en la ANP `r mi_anp`, que
+El mapa de arriba nos da un panorama de la integridad en la ANP *`r mi_anp_print`*, que
 tiene una media de integridad de `r round(mi_anp_ie_stats$media, 2)` y una desviación estándar
 de `r round(mi_anp_ie_stats$desv.est, 2)`. La gráfica de abajo busca contextualizar estos 
-números comparando los valores integridad de `r mi_anp` con los correspondientes a otras
+números comparando los valores integridad de *`r mi_anp_print`* con los correspondientes a otras
 ANPs en la misma zona de vida y con los valores en los anillos.
 
 
@@ -716,7 +720,7 @@ grises corresponden a los pixeles que caen fuera del rango central.
 <div style="clear:both">
 </div>
 
-### Diversidad acústica
+#### Diversidad acústica
 
 El Índice de Entropía Composicional (ACE por sus siglas en inglés) intenta capturar 
 la diversidad de sonidos presentes en un paisaje acústico y es una medida de la 
