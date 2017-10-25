@@ -17,15 +17,16 @@ clase_madmex (clase de cobertura), n (número de pixeles 30x30 m), anp (nombre d
 #### Entradas
 * /LUSTRE/MADMEX/eodata/footprints/anp/anp_sinBuffer/.. shapes de ANPs
 * /LUSTRE/MADMEX/eodata/footprints/anp/anp_rings/.. shapes de anillos de 20km alrededor de ANPs
-* datos_insumo/hansen_forest_loss_v1_3.tif
+* datos_insumo/hansen_forest_loss_v1_4_wgs84nodefs.tif
 * datos_insumo/madmex_nalc_10c_30m_2010.tif
 
 #### Salidas
-* datos_procesados/2017-10-02_perdida_cobertura.RData
-* datos_procesados/2017-10-02_perdida_cobertura_rings.RData
+* datos_procesados/aaaa-mm-dd_perdida_cobertura.RData
+* datos_procesados/aaaa-mm-dd_perdida_cobertura_rings.RData
 
-### crear_datos_ecorregion_anp.R
-Crea tablas para ANPs con variables: anp, eco (ecorregion), hectáreas.
+### crear_datos_ecorregion_region_anp.R
+Crea tablas de ecorregión para ANPs con variables: anp, eco (ecorregion), hectáreas.
+Crea tablas de región CONANP (regiones administrativas) con variables: region, anp. 
 
 #### Entradas
 * /LUSTRE/MADMEX/eodata/footprints/anp/anp_sinBuffer/.. shapes de ANPs
@@ -33,13 +34,37 @@ Crea tablas para ANPs con variables: anp, eco (ecorregion), hectáreas.
 * datos_insumo/ecorregiones/ecort08gw mapa de ecorregiones 2008 descargado del link de arriba
 
 #### Salidas
-* datos_procesados/2017-10-07_ecorregion.RData
-* datos_procesados/2017-10-07_ecorregion_rings.RData
+* datos_procesados/aaaa-mm-dd_ecorregion.RData
+* datos_procesados/aaaa-mm-dd_ecorregion_rings.RData
+* datos_procesados/aaaa-mm-dd_anp_region.RData
+
+### crear_tablas_ie_adi_anp.R
+Crea una lista con una entrada para cada ANP, la lista incluye la media, mediana y desviación estándar 
+de integridad ecológica, el último campo de la lista es una muestra de 1000 valores de integridad.
+
+Reproyecta los rasters de ADI a longlat.
+
+#### Entradas
+* datos_insumo/ie_2014_250m.tif
+
+* datos_insumo/adi/ADI_2014-2015_1000m.tif
+* datos_insumo/adi/ADI_dia_2014-2015_1000m.tif
+* datos_insumo/adi/ADI_noche_2014-2015_1000m.tif
+
+#### Salidas
+* datos_procesados/aaaa-mm-dd_ie_list.RData
+* datos_procesados/aaaa-mm-dd_adi_longlat.tif
+* datos_procesados/aaaa-mm-dd_adi_dia_longlat.tif
+* datos_procesados/aaaa-mm-dd_adi_noche_longlat.tif
 
 
 ## Pendiente
-* en el caso de que una ANP pertenezca a más de una ANP (con porcentajes no despreciables) hacer los análisis de ecorregión considerando las ANPs a las que pertenece, y también las tablas.
+* en el caso de que una ANP pertenezca a más de una ecorregión (con porcentajes no despreciables) hacer los análisis de ecorregión considerando las ANPs a las que pertenece, y también las tablas.
 
-* Agregar gráficas de ADI, cambiar escala de mapa IE, agregar tabla navegable
+* Las ANPs que pertenecen a más de una región CONANP deben separarse.
 
-* Revisar NAs en mapa Hansen con !NA en mapa MADMEX
+* Agregar gráficas de ADI, cambiar escala de mapa IE, agregar tabla navegable.
+
+* Revisar NAs en mapa Hansen con !NA en mapa MADMEX.
+
+* Eliminar de los anlisis de integridad y de deforestación a las ANPs muy chicas.
