@@ -8,7 +8,7 @@ Fuentes de información
 * [Deforestación, Matt Hansen](http://earthenginepartners.appspot.com/science-2013-global-forest)
 * [Clases de cobertura Madmex](http://madmex.conabio.gob.mx/)
 
-## Procesamiento
+## prprocesamiento
 
 ### crear_datos_cobertura_slurm.R 
 Crea tablas para ANPs y sus anillos con variables: year_loss (0: no pérdida, 10: pérdida 2011, 11: pérdida 2012,...), 
@@ -68,6 +68,20 @@ Crea mapas en png de pérdida de cobertura boscosa para cada ANP con la pérdida
 #### Salidas
 * datos_procesados/mapas/deforestacion/NOMBRE_ANP_defo.png
 * datos_procesados/mapas/deforestacion/NOMBRE_ANP_cobertura.png
+
+## reportes
+
+### prototipo.Rmd
+Código para crear reportes html
+
+#### Salidas
+* aaaa-mm-dd_reportes_html/NOMBRE_ANP.html
+
+### prototipo_pdf.Rmd
+Código para crear reportes pdf. Éstos reportes tienen un subconjunto de los análisis incluídos en los reportes en formato html.
+
+#### Salidas
+* aaaa-mm-dd_reportes_pdf/NOMBRE_ANP.pdf
 
 ## Pendiente
 * en el caso de que una ANP pertenezca a más de una ecorregión (con porcentajes no despreciables) hacer los análisis de ecorregión considerando las ANPs a las que pertenece, y también las tablas.
