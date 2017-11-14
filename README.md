@@ -1,5 +1,6 @@
 # anp_reporte
 
+Se crean reportes en formato html y formato pdf con información de las ANPs de CONANP, estos incluyen datos de uso de suelo, pérdida de cobertura boscosa e integridad ecosistémica.
 
 Fuentes de información
 
