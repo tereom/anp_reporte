@@ -46,7 +46,6 @@ Reproyecta los rasters de ADI a longlat.
 
 #### Entradas
 * datos_insumo/ie_2014_250m.tif
-
 * datos_insumo/adi/ADI_2014-2015_1000m.tif
 * datos_insumo/adi/ADI_dia_2014-2015_1000m.tif
 * datos_insumo/adi/ADI_noche_2014-2015_1000m.tif
@@ -57,6 +56,18 @@ Reproyecta los rasters de ADI a longlat.
 * datos_procesados/aaaa-mm-dd_adi_dia_longlat.tif
 * datos_procesados/aaaa-mm-dd_adi_noche_longlat.tif
 
+### crear_mapas_png_mdmx_defo
+Crea mapas en png de pérdida de cobertura boscosa para cada ANP con la pérdida entre 2011 y 2016, crea mapas png de cobertura de suelo usando la clasificación MAD-MEX 2010.
+
+#### Entradas
+* datos_insumo/madmex_nalc_10c_30m_2010.tif
+* datos_insumo/shapes_anp/anp_sinBuffer
+* datos_insumo/anp_nombres.tsv
+* datos_insumo/hansen_forest_loss_v1_4_wgs84nodefs.tif
+
+#### Salidas
+* datos_procesados/mapas/deforestacion/NOMBRE_ANP_defo.png
+* datos_procesados/mapas/deforestacion/NOMBRE_ANP_cobertura.png
 
 ## Pendiente
 * en el caso de que una ANP pertenezca a más de una ecorregión (con porcentajes no despreciables) hacer los análisis de ecorregión considerando las ANPs a las que pertenece, y también las tablas.
@@ -67,4 +78,3 @@ Reproyecta los rasters de ADI a longlat.
 
 * Revisar NAs en mapa Hansen con !NA en mapa MADMEX.
 
-* Eliminar de los anlisis de integridad y de deforestación a las ANPs muy chicas.
