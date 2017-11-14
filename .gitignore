@@ -8,6 +8,7 @@
 *.tsv
 *.csv
 *.png
+*.tex
 .DS_Store
 /datos_insumo
 /datos_procesados
