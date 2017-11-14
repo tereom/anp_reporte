@@ -1,0 +1,501 @@
+---
+output: 
+    pdf_document:
+      keep_tex: true
+      includes:
+          in_header: header.tex
+params:
+    mi_anp:
+        value: anp_terrestres_2017_NOMBRE_Cuatrocienegas
+---
+<!-- css -->
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+library(DT)
+library(readr)
+library(raster)
+library(rgdal)
+library(sp)
+library(rgeos)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(purrr)
+library(knitr)
+library(maptools)
+library(kableExtra)
+library(plotly)
+library(dismo)
+library(rasterVis)
+library(xtable)
+
+knitr::opts_chunk$set(echo = FALSE, fig.align="center", message = FALSE, 
+    warning = FALSE)
+comma <- function(x) format(x, digits = 3, big.mark = ",")
+
+theme_set(theme_minimal())
+
+anp_nombres <- read_delim("../datos_insumo/anp_nombres.tsv", "\t", 
+    escape_double = FALSE, trim_ws = TRUE)
+
+mi_anp <- params$mi_anp
+
+mi_anp_nombres <- anp_nombres %>% 
+    filter(anp_sin_acentos == mi_anp)
+mi_anp_corto <- mi_anp_nombres$anp_corto
+mi_anp_print <- str_replace_all(mi_anp_nombres$anp, "_", " ")
+```
+
+## ANP `r mi_anp_print `
+
+#### Ecorregiones 
+
+```{r, eval = TRUE}
+path_anps_shp <- "../datos_insumo/shapes_anp/anp_sinBuffer/"
+
+mi_anp_shp_file <- list.files(path_anps_shp, 
+    pattern = str_c(mi_anp, ".shp"), recursive = FALSE) %>%
+    tools::file_path_sans_ext() 
+
+mi_anp_shp <- readOGR(path_anps_shp, mi_anp_shp_file, verbose = FALSE)
+```
+
+
+```{r tabla_eco, eval = TRUE, echo = FALSE, message=FALSE, results = "asis"}
+# por ahora cada ANP se asigna a una sola ecorregión, la más prevalente
+load("../datos_procesados/2017-10-24_ecorregion.RData")
+load("../datos_procesados/2017-10-24_ecorregion_rings.RData")
+
+# asignamos la ecorregión más prevalente 
+anp_eco_df <- anp_eco_df %>% 
+    group_by(anp) %>% 
+    mutate(
+        p_area_eco = (hectareas / sum(hectareas)) * 100, 
+        hectareas = sum(hectareas)
+        ) %>%
+    top_n(1, p_area_eco) %>% 
+    ungroup()
+
+
+anp_rings_eco_df <- anp_rings_eco_df %>% 
+    mutate(
+      anp = str_replace(anp, "_ring", "")
+    ) %>% 
+    group_by(anp) %>% 
+    summarise(hectareas_ring = sum(hectareas)) %>% 
+    ungroup()
+
+mi_anp_eco <- anp_eco_df %>% filter(anp == mi_anp)
+mis_eco <- mi_anp_eco %>% pull(eco)
+mis_anps <- anp_eco_df %>% 
+    filter(eco %in% mis_eco, hectareas >= 1000) %>% pull(anp) %>% union(mi_anp)
+
+anp_eco_table <- anp_eco_df %>% 
+    filter(anp %in% mis_anps, !is.na(anp)) %>% 
+    left_join(anp_rings_eco_df) %>% 
+    mutate(
+        hectareas = comma(round(hectareas)), 
+        hectareas_ring = comma(round(hectareas_ring))
+        ) %>% 
+    dplyr::select(anp, hectareas, hectareas_ring) %>% 
+    arrange(desc(hectareas))
+
+titulo_tab <- c(3)
+names(titulo_tab) <- c(mis_eco)
+```
+
+A lo largo del reporte los indicadores de la ANP objetivo se comparan con los 
+indicadores de otras ANPs de la misma ecorregión, esto se hace para poder contextuaizar 
+los valores obtenidos. Utilizamos la definición de ecorregión del mapa 
+de [Ecorregiones terrestres de México (2008)](http://www.conabio.gob.mx/informacion/metadata/gis/ecort08gw.xml?_xsl=/db/metadata/xsl/fgdc_html.xsl&_indent=no) 
+elaborado por INEGI, CONABIO e INE.
+
+La tabla de abajo indica para cada ecorregión cuántas hectáreas hay en ANPs y el 
+número de ANPs con territorio en cada una.
+
+```{r}
+anp_eco_df_table <- anp_eco_df %>%
+    group_by(eco) %>%
+    summarise(
+        hectareas = round(sum(hectareas)),
+        n_anps = n()
+    ) %>%
+    arrange(hectareas) %>%
+    mutate(hectareas = comma(hectareas)) 
+
+anp_eco_df_table %>% 
+    kable("latex",  align = c("l", "c", "c"), col.names = c("", "ha", "# ANPs"))
+```
+
+
+A cada ANP le asignamos la ecorregión de mayor prevalencia, es decir, si la ANP
+pertenece a más de una ecorregión le asignamos aquella donde esté la mayor 
+parte de su terreno. En el caso de la ANP *`r mi_anp_print`* se le asignó la ecorregión
+`r mis_eco`, que engloba el `r round(mi_anp_eco$p_area_eco)`% del área total de 
+la ANP. Por tanto, en los siguientes análisis se compararán los 
+indicadores de las ANPs asignadas a la ecorregión `r mis_eco`, 
+consideramos únicamente aquellas ANPs con al menos 1,000 hectáreas, estas se 
+indican en la tabla de abajo.
+
+```{r}
+anp_eco_table %>% 
+    left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
+    select(anp_corto, hectareas, hectareas_ring) %>% 
+    kable("latex", align = c("l", "c", "c"), col.names = c("", "ha", "ha anillo")) %>%
+    add_header_above(titulo_tab)
+
+```
+
+#### Anillos
+
+Adicional a la comparación con otras ANPs comparamos los distintos indicadores 
+dentro de las ANPs con los equivalentes en los alrededores de las mismas, para 
+esto se definieron los anillos como el área de los 25 km circundantes a cada ANP. 
+
+Vale la pena notar que el anillo de las ANPs puede no corresponder a la misma 
+ecorregión, o puede variar mucho en extensión, sin embargo, consideramos que, 
+teniendo esto en cuenta, es informativo conocer los indicadores en estas regiones.
+En el caso de la ANP *`r mi_anp_print`* el área total de su anillo resulta en 
+`r comma(filter(anp_eco_table, anp == mi_anp)$hectareas_ring)` hectáreas. La 
+última columna de la tabla de arriba indica la extensión de los anillos para 
+las ANPs asignadas a la misma 
+ecorregión que *`r mi_anp_print`*.
+
+
+#### Regiones CONAP
+
+Adicional a los análisis de ecorregión agregamos comparativos dentro de las regiones
+CONANP, la tabla de abajo indica cuantas hectáreas hay en las ANPs correspondientes 
+a cada región y el número de ANPs de cada una.
+
+```{r}
+load("../datos_procesados/2017-10-23_anp_region.RData")
+anp_region_eco <- anp_region_cl %>% 
+    left_join(anp_eco_df, by = "anp")
+
+mi_anp_region <- anp_region_eco %>% filter(anp == mi_anp)
+mis_region <- mi_anp_region %>% pull(region)
+mis_anps_region <- anp_region_eco %>% 
+    filter(region %in% mis_region) %>% pull(anp)
+
+anp_region_eco_table <- anp_region_eco %>% 
+    group_by(region) %>%
+    summarise(
+        hectareas = round(sum(hectareas)),
+        n_anps = n()
+    ) %>%
+    arrange(hectareas) %>%
+    mutate(hectareas = comma(hectareas)) 
+
+anp_region_table <- anp_region_eco %>% 
+    filter(anp %in% mis_anps_region, region %in% mis_region) %>%
+    left_join(anp_rings_eco_df, by = "anp") %>% 
+    left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
+    mutate(
+        hectareas = comma(round(hectareas)), 
+        hectareas_ring = comma(round(hectareas_ring))
+        # anp = str_replace_all(str_sub(anp, start = 1, end = 20), "_", " ")
+        ) %>% 
+    arrange(desc(hectareas))
+
+anp_region_eco_table %>% 
+    kable("latex", align = c("l", "c", "c"), col.names = c("", "ha", "# ANPs")) 
+```
+
+La tabla de abajo indica las ANPs de la región, las hectáreas que comprende
+cada una y la extensión de los anillos que las rodean.
+
+
+```{r}
+titulo_tab_region <- c(3)
+names(titulo_tab_region) <- str_c(mis_region, collapse = ",")
+
+anp_region_table %>% 
+    dplyr::select(anp_corto, hectareas, hectareas_ring) %>%
+    kable("latex", align = c("l", "c", "c"), col.names = c("", "ha", "ha anillo")) %>%
+    add_header_above(titulo_tab_region)
+
+```
+
+
+### Cobertura de suelo 
+
+#### Clases de cobertura
+
+```{r tabla_madmex}
+madmex <- raster("../datos_insumo/madmex_nalc_10c_30m_2010.tif")
+madmex_mi_anp <- madmex %>% 
+    raster::crop(mi_anp_shp) %>%
+    mask(mask = mi_anp_shp)
+
+madmex_mi_anp_v <- values(madmex_mi_anp)
+madmex_mi_anp_c <-  case_when(
+        madmex_mi_anp_v == 1 ~ "bosque",
+        madmex_mi_anp_v == 2 ~ "slevas",
+        madmex_mi_anp_v == 3 ~ "matorrales",
+        madmex_mi_anp_v == 4 ~ "pastizal",
+        madmex_mi_anp_v == 5 ~ "suelo desnudo",
+        madmex_mi_anp_v == 6 ~ "humedal",
+        madmex_mi_anp_v == 7 ~ "agricultura",
+        madmex_mi_anp_v == 8 ~ "asentamiento humano",
+        madmex_mi_anp_v == 9 ~ "agua",
+        madmex_mi_anp_v == 10 ~ "nieve y hielo"
+    )
+
+madmex_tab <- round(prop.table(table(madmex_mi_anp_c)) * 100, 2)
+madmex_tab_pdf <- data.frame(round(prop.table(table(madmex_mi_anp_c)) * 100, 2)) %>%
+    filter(Freq > 0.1) %>% 
+    arrange(-Freq)
+```
+
+La clasificación de la cobertura de suelo se realiza con un algoritmo automatizado, 
+que genera un mapa con resolución espacial de 30 m^2^, construido a partir de 
+imágenes Landsat correspondientes al año 2010. Temáticamente se agregó para 
+contar con 10 clases:  bosques, selvas, matorrales, pastizal, 
+suelo desnudo, humedal, agricultura, asentamiento humano, agua y nieve/hielo.
+
+La tabla de abajo nos muestra el porcentaje del área de la ANP *`r mi_anp_print`* 
+que pertence a cada clase de acuerdo al mapa 2010.
+
+```{r}
+madmex_tab_pdf %>% 
+    kable("latex",  align = c("l", "c"), col.names = c("", "% área")) 
+```
+
+Veamos la composición espacial de las clases en la ANP *`r mi_anp_print`*.
+
+```{r mapa_madmex, echo=FALSE, out.width='100%'}
+ruta <- paste0("../datos_procesados/mapas/cobertura/", mi_anp, "_defo.png")
+knitr::include_graphics(ruta)
+```
+
+#### Pérdida de cobertura boscosa
+<!--
+Utilizamos los datos de [Cambios en cobertura forestal](https://earthenginepartners.appspot.com/science-2013-global-forest) de 
+Hansen, Potapov, Moore, Hancher et al. Estos datos son resultado de análisis de 
+series de tiempo de imágenes Landsat, el producto final es un mapa con información de 
+deforestación para los años 2000 a 2014, con una resolución de 30 m^2^.
+-->
+
+El siguiente mapa muestra las zonas que se identificaron como pérdida de
+cobertura forestal en los últimos 5 años de datos, esto es entre 2011 y 2016.
+
+```{r mapa_hansen, echo=FALSE, out.width='100%'}
+ruta <- paste0("../datos_procesados/mapas/deforestacion/", mi_anp, "_defo.png")
+knitr::include_graphics(ruta)
+```
+
+Ahora veamos el impacto de la deforestación año a año, y para cada tipo de 
+cobertura.
+
+En las gráficas de abajo la línea roja representa la pérdida como porcentaje del 
+área total del ANP, la línea azúl representa el porcentaje de área perdida en el 
+anillo y las líneas grises el equivalente en las ANPs de la ecorregión. En la 
+gráfica del lado izquierdo podemos leer los resultados a total mientras 
+que los paneles del lado derecho cada cobertura de uso de suelo.
+
+```{r deforestacion_tiempo, fig.width = 7, fig.height=4}
+load("../datos_procesados/2017-10-22_perdida_cobertura.RData")
+load("../datos_procesados/2017-10-22_perdida_cobertura_rings.RData")
+
+perdida_mi_anp_ring <- perdida_anps_rings_df  %>% 
+    # mutate(anp = str_replace(anp, "anp_terrestres_2017_NOMBRE_", "")) %>% 
+    filter(anp == str_c(mi_anp, "_ring"))
+
+perdida_anps_df <- perdida_anps_df %>% 
+    # mutate(anp = stringr::str_replace(anp, "anp_terrestres_2017_NOMBRE_", "")) %>% 
+    filter(anp %in% mis_anps) %>% 
+    bind_rows(perdida_mi_anp_ring) %>% 
+    mutate(
+        year_loss = year_loss + 2000, 
+        clase = case_when(
+            anp == mi_anp ~ mi_anp_corto,
+            anp == str_c(mi_anp, "_ring") ~ "anillo", 
+            TRUE ~ "otras")
+        )
+
+perdida_anual_porcentaje <- perdida_anps_df %>% 
+    group_by(year_loss, anp, clase) %>% 
+    summarise(n = sum(n)) %>% 
+    group_by(anp, clase) %>% 
+    mutate(
+        percent_loss = round(n / sum(n) * 100, 3), 
+        ha_loss = n * 3 * 3 / 100) %>% 
+    filter(year_loss > 2000) %>% 
+    ungroup()
+
+
+perdida_anual_porcentaje_mi_anp <- filter(perdida_anual_porcentaje, anp == mi_anp)
+perdida_anual_porcentaje_mi_anp_ring <- filter(perdida_anual_porcentaje, anp == str_c(mi_anp, "_ring"))
+
+escala_color <- c("gray50", "#005b96", "#ff420e")
+names(escala_color) <- c("otras", "anillo", mi_anp_corto)
+escala_alpha <- c(0.1, 0.8, 1)
+names(escala_alpha) <- c("otras", "anillo", mi_anp_corto)
+
+# limpiamos para etiquetas en español
+perdida_anual_porcentaje_cl <- perdida_anual_porcentaje %>% 
+    left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
+    mutate(
+        anp = ifelse(anp == stringr::str_c(mi_anp, "_ring"), 
+            str_c(mi_anp_corto, " anillo"), anp_corto),
+        ) %>% 
+    select(ANP = anp, año = year_loss, perdida = percent_loss, perdida_ha = ha_loss, clase)
+
+perdida_anual_plot <- ggplot(perdida_anual_porcentaje_cl, aes(x = año, 
+    y = perdida, group = ANP, label = perdida_ha)) + 
+    geom_line(aes(color = clase, alpha = clase), show.legend = FALSE) +
+    scale_alpha_manual(values = escala_alpha) +
+    scale_color_manual(values = escala_color) +
+    labs(y = "% área", x = "año", title = "Pérdida anual", color = "", 
+         alpha = "") +
+    ylim(0, max(quantile(perdida_anual_porcentaje$percent_loss, 0.8),
+        max(perdida_anual_porcentaje_mi_anp$percent_loss),
+        max(perdida_anual_porcentaje_mi_anp_ring$percent_loss)))
+
+perdida_anual_cobertura_porcentaje <- perdida_anps_df %>% 
+    group_by(anp, clase, clase_madmex) %>% 
+    mutate(percent_loss = round(n / sum(n) * 100, 3), 
+        ha_loss = n * 3 * 3 / 100) %>%  
+    ungroup() %>% 
+    filter(year_loss > 2000, clase_madmex %in% c(1:3, 6)) %>% 
+    mutate(clase_madmex = case_when(
+        clase_madmex == 1 ~ "bosque", 
+        clase_madmex == 2 ~ "selva", 
+        clase_madmex == 3 ~ "matorrales", 
+        clase_madmex == 6 ~ "humedal")
+        )
+
+perdida_anual_cobertura_mi_anp <- filter(perdida_anual_cobertura_porcentaje, anp == mi_anp)
+perdida_anual_cobertura_mi_anp_ring <- filter(perdida_anual_cobertura_porcentaje, anp == str_c(mi_anp, "_ring"))
+
+perdida_anual_cobertura_porcentaje_cl <- perdida_anual_cobertura_porcentaje %>% 
+    left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
+    mutate(
+        anp = ifelse(anp == stringr::str_c(mi_anp, "_ring"), 
+            str_c(mi_anp_corto, " anillo"), anp_corto),
+        )  %>% 
+    select(ANP = anp, año = year_loss, perdida = percent_loss, perdida_ha = ha_loss, 
+        clase, clase_madmex)
+ 
+perdida_anual_cobertura_plot <- ggplot(perdida_anual_cobertura_porcentaje_cl, 
+    aes(x = año, y = perdida, label = perdida_ha, group = ANP)) + 
+    geom_line(aes(color = clase, alpha = clase), show.legend = TRUE) +
+    scale_alpha_manual(values = escala_alpha) +
+    scale_color_manual(values = escala_color) +
+    facet_wrap(~clase_madmex) +
+    labs(y = "% área", x = "año", title = "Pérdida anual (% área)", color = "", 
+         alpha = "") +
+    ylim(0, max(quantile(perdida_anual_cobertura_porcentaje$percent_loss, 0.8),
+        max(perdida_anual_cobertura_mi_anp$percent_loss), 
+        max(perdida_anual_cobertura_mi_anp_ring$percent_loss)))
+
+vars_tooltip <- c("ANP", "perdida_ha", "perdida", "año")
+
+gridExtra::grid.arrange(perdida_anual_plot, perdida_anual_cobertura_plot, nrow = 1)
+```
+
+Con el fin de comparar el grado de pérdida boscosa entre las ANPs de una misma 
+región CONANP construímos un índice de perdida forestal, el índice considera la
+pérdida por ecorregión. Esto es porque es razonable considerar
+que algunas ecorregiones sean sujetas a mayor amenaza de perdida forestal que otras. 
+
+```{r}
+load("../datos_procesados/2017-10-22_perdida_cobertura.RData")
+
+indice_deforestacion <- perdida_anps_df %>% 
+    # mutate(anp = stringr::str_replace(anp, "anp_terrestres_2017_NOMBRE_", "")) %>% 
+    mutate(ultimos_5 = year_loss > 11) %>% 
+    group_by(anp) %>% 
+    mutate(hectareas = sum(n)) %>% 
+    group_by(anp, ultimos_5) %>% 
+    summarise(deforestacion = sum(n) / first(hectareas) * 100) %>% 
+    ungroup() %>% 
+    filter(ultimos_5) %>% 
+    left_join(anp_eco_df, by = "anp") %>% 
+    select(-ultimos_5, -hectareas, -p_area_eco) %>% 
+    group_by(eco) %>% 
+    mutate(
+        deforestacion_eco = mean(deforestacion),
+        ind_deforestacion = round(deforestacion - deforestacion_eco, 2), 
+        ind_cat = ind_deforestacion < 0
+        ) 
+
+# ecorregiones representadas en región CONANP
+mis_eco_region <- indice_deforestacion %>% 
+    filter(anp %in% mis_anps_region) %>% pull(eco) %>% unique()
+
+
+tab_def_eco <- indice_deforestacion %>% 
+    filter(!is.na(eco)) %>% 
+    select(eco, deforestacion_eco) %>% 
+    distinct() %>% 
+    mutate(deforestacion_eco = round(deforestacion_eco, 2)) %>% 
+    arrange(deforestacion_eco)
+```
+Adicionalmente, medimos la pérdida como el porcentaje del área total de cada
+ANP perdida por deforestación en los últimos 5 años de datos, en este caso entre 2011 y 2016.
+
+La siguiente tabla muestra el promedio de la deforestación de las ANPs de
+cada ecorregión.
+
+```{r}
+tab_def_eco %>% 
+    kable("latex", align = c("l", "c"), col.names = c("", "% perdida"))
+```
+
+
+Una vez que calculamos el promedio de pérdida en cada ecorregión construimos
+el índice como la diferencia entre la pérdida de cada ANP y la pérdida promedio
+en la ecorregión a la que pertenece, es así que si una ANP ocurrió más 
+pérdida boscosa que en el promedio de su ecorregión, el índice tomará un valor 
+negativo. La gráfica de abajo indica el valor de los índices para todas las ANPs
+de la región *`r mis_region`*.
+
+```{r deforestacion_region_conanp, fig.width = 5, fig.height=4.5}
+indice_deforestacion_cl <- indice_deforestacion %>% 
+    filter(anp %in% mis_anps_region) %>% 
+    left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
+    arrange(ind_deforestacion)
+
+a <- ifelse(indice_deforestacion_cl$anp == mi_anp, "red", "gray30")
+ggplot(indice_deforestacion_cl,
+    aes(x = reorder(anp_corto, ind_deforestacion), y = ind_deforestacion, label = eco)) + 
+    geom_bar(stat = 'identity', aes(fill = ind_cat), width = .5)  +
+    scale_fill_manual(name = "", 
+                    labels = c("mayor al promedio", "menor al promedio"), 
+                    values = c("FALSE" = "#f8766d", "TRUE" = "#00ba38")) + 
+  labs(title= "Pérdida boscosa en la región", x = "", y = "") + 
+    coord_flip() +
+    theme(axis.text.y = element_text(colour = a))
+  
+```
+
+```{r, eval = FALSE, echo=FALSE}
+ggplot(indice_deforestacion_cl, 
+    aes(x = reorder(anp_corto, ind_deforestacion), y = ind_deforestacion, label = eco, 
+        group = anp)) + 
+    geom_bar(stat = 'identity', aes(fill = eco), width = .5) +
+  labs(subtitle="Índice calculado por ecorregión", 
+       title= "Deforestación en la región", x = "", y = "", fill = "") + 
+  coord_flip()
+```
+
+
+### Referencias y materiales
+
+Gebhardt, S.; Wehrmann, T.; Ruiz, M.A.M.; Maeda, P.; Bishop, J.; Schramm, M.; Kopeinig, R.; Cartus, O.; Kellndorfer, J.; Ressl, R.; Santos, L.A.; Schmidt, M.	MAD-MEX: Automatic Wall-to-Wall Land Cover Monitoring for the Mexican REDD-MRV Program Using All Landsat Data. Remote Sens. 2014, 6, 3923-3943.
+
+Gebhardt, S.; Maeda, P.; Wehrmann, T.; Argumedo, J.; A PROPER LAND COVER AND FOREST TYPE CLASSIFICATION SCHEME FOR
+MEXICO. The International Archives of the Photogrammetry, Remote Sensing and Spatial Information Sciences, Volume XL-7/W3, 2015
+36th International Symposium on Remote Sensing of Environment, 11–15, May 2015, Berlin, Germany.
+
+Garcia-Alaniz, N.; Equihua, M.; Pérez-Maqueo O.;Equihua, J.;Pardo F.;Martínez, J.; Villela, S.; Schmidt, M., The Mexican National Biodiversity and Ecosystem Degradation Monitoring System, Current Opinion in Evironmental Sustainability, 2017, 26-27, 62–68.
+
+Hansen, M. C., P. V. Potapov, R. Moore, M. Hancher, S. A. Turubanova, A. Tyukavina, D. Thau, S. V. Stehman, S. J. Goetz, T. R. Loveland, A. Kommareddy, A. Egorov, L. Chini, C. O. Justice, and J. R. G. Townshend. 2013. “High-Resolution Global Maps of 21st-Century Forest Cover Change.” Science 342 (15 November): 850–53.
+
+Bryan C. Pijanowski, Luis J. Villanueva-Rivera, Sarah L. Dumyahn, Almo Farina, Bernie L. Krause, Brian M. Napoletano, Stuart H. Gage and Nadia Pieretti, Soundscape Ecology: The Science of Sound in the Landscape, BioScience, Vol. 61, No. 3 (March 2011), pp. 203-216, University of California Press on behalf of the American Institute of Biological Sciences
+
+Landsat imagery, NASA Land Processes Distributed Active Archive Center (LP DAAC) Products,These data are distributed by the Land Processes Distributed Active Archive Center (LP DAAC), located at USGS/EROS, Sioux Falls, SD. http://lpdaac.usgs.gov
+
+
