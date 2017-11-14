@@ -288,9 +288,9 @@ Veamos la composición espacial de las clases en la ANP *`r mi_anp_print`*.
 
 ```{r madmex_mapa}
 ext <- raster::extent(mi_anp_shp)
-pal <- colorFactor(palette = c('#a6cee3', '#1f78b4', '#b2df8a', '#33a02c', 
-    '#fb9a99', '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a'), 
-    domain = 1:10, na.color = "transparent")
+colores_madmex <- c('#b2df8a', '#33a02c', '#fb9a99', '#e31a1c', '#fdbf6f', 
+    '#ff7f00', '#cab2d6', '#6a3d9a', '#a6cee3', '#1f78b4')
+pal <- colorFactor(palette = colores_madmex, domain = 1:10, na.color = "transparent")
 
 leaflet(data = mi_anp_shp) %>% 
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
@@ -298,10 +298,9 @@ leaflet(data = mi_anp_shp) %>%
         addTiles() %>%
         fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, lat2 = ext@ymax) %>% 
         addProviderTiles(providers$Esri.WorldImagery) %>% 
-        addRasterImage(madmex_mi_anp, color = pal, opacity = 0.6) %>% 
-        addLegend("bottomright", values = 1:10, colors = c('#a6cee3', 
-            '#1f78b4', '#b2df8a', '#33a02c', '#fb9a99', '#e31a1c',
-                '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a'),
+        addRasterImage(madmex_mi_anp, color = pal, opacity = 0.6, 
+            maxBytes = 8 * 1024 * 1024) %>% 
+        addLegend("bottomright", values = 1:10, colors = colores_madmex,
             title = "MAD-MEX (2010)", labels = c("bosques", "selvas", "matorrales", 
                 "pastizal", "suelo desnudo", "humedal", "agricultura", 
                 "asentamiento humano", "agua", "nieve y hielo"), opacity = 0.6)
