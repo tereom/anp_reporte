@@ -43,7 +43,7 @@ mi_anp_print <- str_replace_all(mi_anp_nombres$anp, "_", " ")
 
 ## ANP `r mi_anp_print ` {.tabset}
 
-### Descritpivos 
+### Descriptivos 
 
 #### Ecorregiones 
 
@@ -208,7 +208,7 @@ anp_region_table %>%
     add_header_above(titulo_tab_region)
 ```
 
-#### Regiones CONAP
+#### Regiones CONANP
 
 Adicional a los análisis de ecorregión agregamos comparativos con las regiones
 CONANP, la tabla de abajo indica cuantas hectáreas hay en las ANPs correspondientes 
@@ -253,8 +253,8 @@ madmex_mi_anp <- madmex %>%
 madmex_mi_anp_v <- values(madmex_mi_anp)
 madmex_mi_anp_c <-  case_when(
         madmex_mi_anp_v == 1 ~ "bosque",
-        madmex_mi_anp_v == 2 ~ "slevas",
-        madmex_mi_anp_v == 3 ~ "matorrales",
+        madmex_mi_anp_v == 2 ~ "selva",
+        madmex_mi_anp_v == 3 ~ "matorral",
         madmex_mi_anp_v == 4 ~ "pastizal",
         madmex_mi_anp_v == 5 ~ "suelo desnudo",
         madmex_mi_anp_v == 6 ~ "humedal",
@@ -341,7 +341,7 @@ Ahora veamos el impacto de la deforestación año a año, y para cada tipo de
 cobertura.
 
 En las gráficas de abajo la línea roja representa la pérdida como porcentaje del 
-área total del ANP, la línea azúl representa el porcentaje de área perdida en el 
+área total del ANP, la línea azul representa el porcentaje de área perdida en el 
 anillo y las líneas grises el equivalente en las ANPs de la ecorregión. En la 
 gráfica del lado izquierdo podemos leer los resultados a total mientras 
 que los paneles del lado derecho cada cobertura de uso de suelo.
@@ -451,9 +451,9 @@ subplot(style(p1, traces = 1:3, showlegend = FALSE), p2, margin = 0.03)
 ```
 
 Con el fin de comparar el grado de pérdida boscosa entre las ANPs de una misma 
-región CONANP construímos un índice de perdida forestal, el índice considera la
+región CONANP construímos un índice de pérdida forestal, el índice considera la
 pérdida por ecorregión. Esto es porque es razonable considerar
-que algunas ecorregiones sean sujetas a mayor amenaza de perdida forestal que otras. 
+que algunas ecorregiones sean sujetas a mayor amenaza de pérdida forestal que otras. 
 
 ```{r}
 load("../datos_procesados/2017-10-22_perdida_cobertura.RData")
@@ -611,7 +611,7 @@ El mapa de arriba nos da un panorama de la integridad en la ANP *`r mi_anp_print
 tiene una media de integridad de `r round(mi_anp_ie_stats$media, 2)` y una desviación estándar
 de `r round(mi_anp_ie_stats$desv.est, 2)`. La gráfica de abajo busca contextualizar estos 
 números comparando los valores integridad de *`r mi_anp_print`* con los correspondientes a otras
-ANPs en la misma zona de vida y con los valores en los anillos.
+ANPs en la misma ecorregión y con los valores en los anillos.
 
 
 <div style= "float:left;position: relative; top: -10px;">
