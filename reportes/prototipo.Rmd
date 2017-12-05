@@ -790,4 +790,3 @@ Hansen, M. C., P. V. Potapov, R. Moore, M. Hancher, S. A. Turubanova, A. Tyukavi
 Bryan C. Pijanowski, Luis J. Villanueva-Rivera, Sarah L. Dumyahn, Almo Farina, Bernie L. Krause, Brian M. Napoletano, Stuart H. Gage and Nadia Pieretti, Soundscape Ecology: The Science of Sound in the Landscape, BioScience, Vol. 61, No. 3 (March 2011), pp. 203-216, University of California Press on behalf of the American Institute of Biological Sciences
 
 Landsat imagery, NASA Land Processes Distributed Active Archive Center (LP DAAC) Products,These data are distributed by the Land Processes Distributed Active Archive Center (LP DAAC), located at USGS/EROS, Sioux Falls, SD. http://lpdaac.usgs.gov
-
