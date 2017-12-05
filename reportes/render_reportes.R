@@ -6,10 +6,10 @@ library(rmarkdown)
 anp_nombres <- read_delim("datos_insumo/anp_nombres.tsv", "\t", 
     escape_double = FALSE, trim_ws = TRUE)
 
-render_reporte <- function(mi_anp, dir_save = "reportes_html", rmd_file = "reportes/prototipo.Rmd") {
+render_reporte <- function(mi_anp, dir_save = "reportes_html", 
+    rmd_file = "reportes/prototipo.Rmd", ext = ".pdf") {
     try(rmarkdown::render(rmd_file, 
-        output_format = "all",
-        output_file = str_c(mi_anp, ".pdf"), 
+        output_file = str_c(mi_anp, ext), 
         output_dir = str_c("reportes/", dir_save),
         params = list(mi_anp = mi_anp)
         ))
@@ -39,4 +39,18 @@ reportes <- map(anps_faltantes, render_reporte)
 reportes <- map(anp_nombres_cl$anp_sin_acentos, ~render_reporte(.,  
     dir_save = "2017-11-10_reportes_pdf", rmd_file = "reportes/prototipo_pdf.Rmd"))
 
+
+# PDFs faltantes
+reportes_generados <- list.files("reportes/2017-11-10_reportes_pdf/", 
+        pattern = ".pdf") %>% 
+    tools::file_path_sans_ext()
+    
+anps_faltantes <- anp_nombres_cl %>% 
+    filter(!(anp_sin_acentos %in% reportes_generados)) %>% 
+    pull(anp_sin_acentos)
+
+reportes <- map(anps_faltantes, ~render_reporte(.,  
+    dir_save = "2017-11-10_reportes_pdf", 
+    rmd_file = "reportes/prototipo_pdf.Rmd"), 
+    ext = ".pdf")
     
