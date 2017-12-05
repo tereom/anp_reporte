@@ -1,5 +1,6 @@
 # anp_reporte
 
+Se crean reportes en formato html y formato pdf con información de las ANPs de CONANP, estos incluyen datos de uso de suelo, pérdida de cobertura boscosa e integridad ecosistémica.
 
 Fuentes de información
 
@@ -8,7 +9,7 @@ Fuentes de información
 * [Deforestación, Matt Hansen](http://earthenginepartners.appspot.com/science-2013-global-forest)
 * [Clases de cobertura Madmex](http://madmex.conabio.gob.mx/)
 
-## Procesamiento
+## prprocesamiento
 
 ### crear_datos_cobertura_slurm.R 
 Crea tablas para ANPs y sus anillos con variables: year_loss (0: no pérdida, 10: pérdida 2011, 11: pérdida 2012,...), 
@@ -46,7 +47,6 @@ Reproyecta los rasters de ADI a longlat.
 
 #### Entradas
 * datos_insumo/ie_2014_250m.tif
-
 * datos_insumo/adi/ADI_2014-2015_1000m.tif
 * datos_insumo/adi/ADI_dia_2014-2015_1000m.tif
 * datos_insumo/adi/ADI_noche_2014-2015_1000m.tif
@@ -57,6 +57,32 @@ Reproyecta los rasters de ADI a longlat.
 * datos_procesados/aaaa-mm-dd_adi_dia_longlat.tif
 * datos_procesados/aaaa-mm-dd_adi_noche_longlat.tif
 
+### crear_mapas_png_mdmx_defo
+Crea mapas en png de pérdida de cobertura boscosa para cada ANP con la pérdida entre 2011 y 2016, crea mapas png de cobertura de suelo usando la clasificación MAD-MEX 2010.
+
+#### Entradas
+* datos_insumo/madmex_nalc_10c_30m_2010.tif
+* datos_insumo/shapes_anp/anp_sinBuffer
+* datos_insumo/anp_nombres.tsv
+* datos_insumo/hansen_forest_loss_v1_4_wgs84nodefs.tif
+
+#### Salidas
+* datos_procesados/mapas/deforestacion/NOMBRE_ANP_defo.png
+* datos_procesados/mapas/deforestacion/NOMBRE_ANP_cobertura.png
+
+## reportes
+
+### prototipo.Rmd
+Código para crear reportes html
+
+#### Salidas
+* aaaa-mm-dd_reportes_html/NOMBRE_ANP.html
+
+### prototipo_pdf.Rmd
+Código para crear reportes pdf. Éstos reportes tienen un subconjunto de los análisis incluídos en los reportes en formato html.
+
+#### Salidas
+* aaaa-mm-dd_reportes_pdf/NOMBRE_ANP.pdf
 
 ## Pendiente
 * en el caso de que una ANP pertenezca a más de una ecorregión (con porcentajes no despreciables) hacer los análisis de ecorregión considerando las ANPs a las que pertenece, y también las tablas.
@@ -67,4 +93,3 @@ Reproyecta los rasters de ADI a longlat.
 
 * Revisar NAs en mapa Hansen con !NA en mapa MADMEX.
 
-* Eliminar de los anlisis de integridad y de deforestación a las ANPs muy chicas.
