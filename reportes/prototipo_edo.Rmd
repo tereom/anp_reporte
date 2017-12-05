@@ -1,0 +1,491 @@
+---
+output: 
+    html_document:
+        css: estilo.css
+params:
+    mi_edo:
+        value: Morelos
+---
+<!-- css -->
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+library(DT)
+library(raster)
+library(rgdal)
+library(sp)
+library(rgeos)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(purrr)
+library(knitr)
+library(maptools)
+library(kableExtra)
+library(plotly)
+library(leaflet)
+
+knitr::opts_chunk$set(echo = FALSE, fig.align="center", message = FALSE, 
+    warning = FALSE)
+comma <- function(x) format(x, digits = 3, big.mark = ",")
+
+theme_set(theme_minimal())
+
+# cargar data.frame edo_nombres
+edo_nombres <- tribble(
+    ~edo,                 ~edo_sin_acentos,      ~edo_corto,
+    "Estado de México",   "Mexico",              "Méx.",
+    "Morelos",            "Morelos",             "Mor.",
+    "Ciudad de México",   "Distrito_Federal",    "CDMX",
+    "Tlaxcala",           "Tlaxcala",            "Tlax.",
+    "Puebla",             "Puebla",              "Pue.", 
+    "Guerrero",           "Guerrero",            "Gro.", 
+    "Hidalgo",            "Hidalgo",             "Hgo.",
+    "Querétaro",          "Queretaro",           "Qro.",
+    "Michoacán",          "Michoacan_de_Ocampo", "Mich."
+)
+
+mi_edo <- params$mi_edo
+
+mi_edo_nombres <- edo_nombres %>% 
+    filter(edo_sin_acentos == mi_edo)
+mi_edo_corto <- mi_edo_nombres$edo_corto
+mi_edo_print <- mi_edo_nombres$edo
+```
+
+## `r mi_edo_print ` {.tabset}
+
+### Descriptivos 
+
+#### Ecorregiones 
+
+```{r, eval = TRUE}
+path_edos_shp <- "../datos_insumo/shapes_estados_mexico_proyeccion_inegi_lcc"
+
+mi_edo_shp_file <- list.files(path_edos_shp, 
+    pattern = str_c(mi_edo, ".shp"), recursive = FALSE) %>%
+    tools::file_path_sans_ext() 
+
+mi_edo_shp <- readOGR(path_edos_shp, mi_edo_shp_file, verbose = FALSE)
+
+# La proyección de INEGI es lcc, para leaflet reporyectamos a longlat
+mi_edo_shp <- spTransform(mi_edo_shp, "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+```
+
+
+```{r tabla_eco, eval = TRUE, echo = FALSE, message=FALSE}
+# por ahora cada edo se asigna a una sola ecorregión, la más prevalente
+load("../datos_procesados/2017-12-01_ecorregion_edo.RData")
+
+# asignamos la ecorregión más prevalente 
+edo_eco_df <- edo_eco_df %>% 
+    rename(edo = anp) %>% 
+    group_by(edo) %>% 
+    mutate(
+        p_area_eco = (hectareas / sum(hectareas)) * 100
+        ) %>%
+    ungroup()
+
+mi_edo_eco <- edo_eco_df %>% filter(edo == mi_edo)
+mis_eco <- mi_edo_eco %>% pull(eco)
+mis_edos <- edo_eco_df %>% 
+    filter(eco %in% mis_eco, p_area_eco >= 20) %>% pull(edo) %>% union(mi_edo)
+
+edo_eco_table <- edo_eco_df %>% 
+    filter(edo %in% mis_edos, !is.na(edo), eco %in% mis_eco, p_area_eco >= 20) %>% 
+    mutate(eco = reorder(eco, -hectareas, sum)) %>% 
+    mutate(
+        hectareas = comma(round(hectareas)), 
+        p_area_eco = round(p_area_eco)
+        ) %>% 
+    dplyr::select(eco, edo, hectareas, p_area_eco) %>% 
+    arrange(eco, desc(hectareas)) %>% 
+    group_by(eco) %>% 
+    mutate(
+        eco_p = c(first(as.character(eco)), rep("", n() - 1))
+        ) %>% 
+    ungroup()
+
+
+edo_eco_table %>% 
+    left_join(edo_nombres, by = c("edo" = "edo_sin_acentos")) %>% 
+    select(eco_p, edo_corto, hectareas, p_area_eco) %>% 
+    kable("html", align = c("r", "c", "c", "c"), padding = 10, 
+        col.names = c("ecorregión", "edo.", "ha", "% área total")) %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+        position = "float_right", font_size = 11, full_width = FALSE) %>% 
+    row_spec(1:nrow(edo_eco_table), color = "#79797d") %>% 
+    row_spec(which(edo_eco_table$edo == mi_edo), bold = T, 
+        color = "#2F3526") 
+```
+
+A lo largo del reporte los indicadores del estado se comparan con los 
+indicadores de otros estados con territorio de la misma ecorregión, esto se hace para poder contextuaizar 
+los valores obtenidos. Utilizamos la definición de ecorregión del mapa 
+de [Ecorregiones terrestres de México (2008)](http://www.conabio.gob.mx/informacion/metadata/gis/ecort08gw.xml?_xsl=/db/metadata/xsl/fgdc_html.xsl&_indent=no) 
+elaborado por INEGI, CONABIO e INE.
+
+La tabla de abajo indica para cada ecorregión cuántas hectáreas hay en edos y el 
+número de edos con territorio en cada una.
+
+```{r, include=FALSE}
+edo_eco_df_table <- edo_eco_df %>%
+    group_by(eco) %>%
+    summarise(
+        hectareas = round(sum(hectareas)),
+        n_edos = n()
+    ) %>%
+    arrange(hectareas) %>%
+    mutate(hectareas = comma(hectareas)) 
+
+edo_eco_df_table %>% 
+    kable("html", col.names = c("", "ha", "# edos")) %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+        position = "left", font_size = 12, full_width = FALSE) %>% 
+    row_spec(which(edo_eco_df_table$eco %in% mis_eco), bold = T, 
+        color = "#2F3526")
+```
+
+El edo `r mi_edo` pertenece a `r ifelse(length(mis_eco) > 1, str_c("la ecorregiones ", 
+str_c(mis_eco, collapse = ", ")), str_c("la ecorregión ", mis_eco))`, y por tanto
+en los siguientes análisis se compararán los indicadores de las edos con 
+territorio en `r str_c(mis_eco, collapse = ", ")`, consideramos aquellas edos con 
+al menos 1,000 hectáreas, estas se indican en la tabla de la derecha.
+
+A cada edo le asignamos la ecorregión de mayor prevalencia, es decir, si la edo
+pertenece a más de una ecorregión le asignamos aquella donde esté la mayor 
+parte de su terreno. En el caso de la edo *`r mi_edo_print`* se le asignó la ecorregión
+`r mis_eco`, que engloba el `r round(mi_edo_eco$p_area_eco)`% del área total de 
+la ANP. Por tanto, en los siguientes análisis se compararán los 
+indicadores de las ANPs asignadas a la ecorregión `r mis_eco`, 
+consideramos únicamente aquellas ANPs con al menos 1,000 hectáreas, estas se 
+indican en la tabla de la derecha.
+
+### Cobertura de suelo 
+
+#### Clases de cobertura
+
+```{r tabla_madmex}
+madmex <- raster("../datos_insumo/madmex_nalc_10c_30m_2010.tif")
+madmex_mi_edo <- madmex %>% 
+    raster::crop(mi_edo_shp) %>%
+    mask(mask = mi_edo_shp)
+
+madmex_mi_edo_v <- values(madmex_mi_edo)
+madmex_mi_edo_c <-  case_when(
+        madmex_mi_edo_v == 1 ~ "bosque",
+        madmex_mi_edo_v == 2 ~ "slevas",
+        madmex_mi_edo_v == 3 ~ "matorrales",
+        madmex_mi_edo_v == 4 ~ "pastizal",
+        madmex_mi_edo_v == 5 ~ "suelo desnudo",
+        madmex_mi_edo_v == 6 ~ "humedal",
+        madmex_mi_edo_v == 7 ~ "agricultura",
+        madmex_mi_edo_v == 8 ~ "asentamiento humano",
+        madmex_mi_edo_v == 9 ~ "agua",
+        madmex_mi_edo_v == 10 ~ "nieve y hielo"
+    )
+
+madmex_tab <- round(prop.table(table(madmex_mi_edo_c)) * 100, 2)
+data.frame(round(prop.table(table(madmex_mi_edo_c)) * 100, 2)) %>% 
+    filter(Freq > 0.1) %>% 
+    arrange(-Freq) %>% 
+    kable("html", col.names = c("", "% área")) %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+        position = "float_right", font_size = 11, full_width = FALSE)
+```
+
+La clasificación de la cobertura de suelo se realiza con un algoritmo automatizado, 
+que genera un mapa con resolución espacial de 30 m^2^, construido a partir de 
+imágenes Landsat correspondientes al año 2010. Temáticamente se agregó para 
+contar con 10 clases:  bosque, selva, matorral, pastizal, 
+suelo desnudo, humedal, agricultura, asentamiento humano, agua y nieve/hielo.
+
+La tabla de la derecha nos muestra el porcentaje del área de la ANP *`r mi_edo_print`* 
+que pertence a cada clase de acuerdo al mapa 2010.
+
+</br>
+
+Veamos la composición espacial de las clases en la ANP *`r mi_edo_print`*.
+
+```{r madmex_mapa}
+ext <- raster::extent(mi_edo_shp)
+colores_madmex <- c('#b2df8a', '#33a02c', '#fb9a99', '#e31a1c', '#fdbf6f', 
+    '#ff7f00', '#cab2d6', '#6a3d9a', '#a6cee3', '#1f78b4')
+pal <- colorFactor(palette = colores_madmex, domain = 1:10, na.color = "transparent")
+
+leaflet(data = mi_edo_shp) %>% 
+    addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
+        opacity = 1.0, fillOpacity = 0.1) %>% 
+        addTiles() %>%
+        fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, lat2 = ext@ymax) %>% 
+        addProviderTiles(providers$Esri.WorldImagery) %>% 
+        addRasterImage(madmex_mi_edo, color = pal, opacity = 0.6, 
+            maxBytes = 8 * 1024 * 1024) %>% 
+        addLegend("bottomright", values = 1:10, colors = colores_madmex,
+            title = "MAD-MEX (2010)", labels = c("bosque", "selva", 
+                "matorral", "pastizal", "suelo desnudo", "humedal", "agricultura", 
+                "asentamiento humano", "agua", "nieve y hielo"), opacity = 0.6)
+```
+
+
+#### Pérdida de cobertura boscosa
+<!--
+Utilizamos los datos de [Cambios en cobertura forestal](https://earthenginepartners.appspot.com/science-2013-global-forest) de 
+Hansen, Potapov, Moore, Hancher et al. Estos datos son resultado de análisis de 
+series de tiempo de imágenes Landsat, el producto final es un mapa con información de 
+deforestación para los años 2000 a 2014, con una resolución de 30 m^2^.
+-->
+
+El siguiente mapa muestra en rojo las zonas que se identificaron como pérdida de
+cobertura forestal en los últimos 5 años de datos, esto es entre 2011 y 2016.
+
+```{r hansen_map}
+hansen_loss <- raster("../datos_insumo/hansen_forest_loss_v1_4_wgs84nodefs.tif")
+
+hansen_mi_edo <- hansen_loss %>% 
+    raster::crop(mi_edo_shp) %>%            # cortamos el raster a la dimensión del ANP
+    mask(mask = mi_edo_shp)
+hansen_mi_edo[hansen_mi_edo < 11] <- NA
+
+leaflet(data = mi_edo_shp) %>% 
+    addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
+        opacity = 1.0, fillOpacity = 0.1) %>% 
+        addTiles() %>%
+        fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, lat2 = ext@ymax) %>% 
+        addProviderTiles(providers$Esri.WorldImagery) %>% 
+        addRasterImage(hansen_mi_edo, colors = "red")
+```
+</br>
+
+Ahora veamos el impacto de la deforestación año a año, y para cada tipo de 
+cobertura.
+
+En las gráficas de abajo la línea roja representa la pérdida como porcentaje del 
+área total del estado y las líneas grises el equivalente en los otros estados.
+En la 
+gráfica del lado izquierdo podemos leer los resultados a total mientras 
+que los paneles del lado derecho cada cobertura de uso de suelo.
+
+```{r deforestacion_tiempo, fig.width = 8, fig.height=4.5}
+load("../datos_procesados/2017-12-05_perdida_cobertura_edo.RData")
+
+perdida_edos_df <- perdida_edos_df %>% 
+    mutate(
+        year_loss = year_loss + 2000, 
+        clase = case_when(
+            edo == mi_edo ~ mi_edo_corto,
+            TRUE ~ "otros")
+        )
+
+perdida_anual_porcentaje <- perdida_edos_df %>% 
+    group_by(year_loss, edo, clase) %>% 
+    summarise(n = sum(n)) %>% 
+    group_by(edo, clase) %>% 
+    mutate(
+        percent_loss = round(n / sum(n) * 100, 3), 
+        ha_loss = n * 3 * 3 / 100) %>% 
+    filter(year_loss > 2000) %>% 
+    ungroup()
+
+escala_color <- c("gray50", "#ff420e")
+names(escala_color) <- c("otros", mi_edo_corto)
+escala_alpha <- c(0.6, 1)
+names(escala_alpha) <- c("otros", mi_edo_corto)
+
+# limpiamos para etiquetas en español
+perdida_anual_porcentaje_cl <- perdida_anual_porcentaje %>% 
+    left_join(edo_nombres, by = c("edo" = "edo_sin_acentos")) %>% 
+    select(Edo. = edo, año = year_loss, perdida = percent_loss, perdida_ha = ha_loss, clase)
+
+perdida_anual_plot <- ggplot(perdida_anual_porcentaje_cl, aes(x = año, 
+    y = perdida, group = Edo., label = perdida_ha)) + 
+    geom_line(aes(color = clase, alpha = clase)) +
+    scale_alpha_manual(values = escala_alpha) +
+    scale_color_manual(values = escala_color) +
+    labs(y = "% área", x = "año", title = "Pérdida anual", color = "", 
+         alpha = "") 
+
+perdida_anual_cobertura_porcentaje <- perdida_edos_df %>% 
+    group_by(edo, clase, clase_madmex) %>% 
+    mutate(percent_loss = round(n / sum(n) * 100, 3), 
+        ha_loss = n * 3 * 3 / 100) %>%  
+    ungroup() %>% 
+    filter(year_loss > 2000, clase_madmex %in% c(1:3, 6)) %>% 
+    mutate(clase_madmex = case_when(
+        clase_madmex == 1 ~ "bosque", 
+        clase_madmex == 2 ~ "selva", 
+        clase_madmex == 3 ~ "matorral", 
+        clase_madmex == 6 ~ "humedal")
+        )
+
+perdida_anual_cobertura_porcentaje_cl <- perdida_anual_cobertura_porcentaje %>% 
+    left_join(edo_nombres, by = c("edo" = "edo_sin_acentos")) %>% 
+    select(Edo. = edo, año = year_loss, perdida = percent_loss, 
+        perdida_ha = ha_loss, clase, clase_madmex)
+ 
+perdida_anual_cobertura_plot <- ggplot(perdida_anual_cobertura_porcentaje_cl, 
+    aes(x = año, y = perdida, label = perdida_ha, group = Edo.)) + 
+    geom_line(aes(color = clase, alpha = clase), show.legend = FALSE) +
+    scale_alpha_manual(values = escala_alpha) +
+    scale_color_manual(values = escala_color) +
+    facet_wrap(~clase_madmex) +
+    labs(y = "% área", x = "año", title = "Pérdida anual (% área)", color = "", 
+         alpha = "")
+
+vars_tooltip <- c("Edo.", "perdida_ha", "perdida", "año")
+p1 <- ggplotly(perdida_anual_plot, tooltip = vars_tooltip, 
+                 dynamicTicks = TRUE)
+p2 <- ggplotly(perdida_anual_cobertura_plot, tooltip = vars_tooltip, 
+                 dynamicTicks = TRUE)
+subplot(style(p1, traces = 1:2, showlegend = FALSE), p2, margin = 0.03)
+```
+
+
+### Integridad y ACE
+
+#### Integridad ecosistémica
+
+La integridad ecosistémica se reporta mediante un índice construído en colaboración
+de CONABIO e INECOL. Este índice relaciona de manera integral varios aespectos 
+de la biodiversidad a través de modelos llamados redes bayesianas. Estos modelos
+representan complejas relaciones intercruzadas entre variables descriptoras de los ecosistemas como lo son el tamaño y la cantidad de árboles presentes, y variables contextuales como lo son el clima y la topografía. Con base en esto, los modelos arrojan un predicción sobre el estado actual de los ecosistemas a lo largo del territorio nacional.
+
+Para este reporte se trabajó con el mapa de integridad ecosistémica de 2014, 
+con una resolución de 250 m^2^, el índice de integridad está estandarizado de 
+manera que toma valores entre 0 y 1, donde 1 es el mayor valor de integridad. 
+
+```{r mapa_ie, message=FALSE, warning=FALSE}
+ie_longlat <- raster("../datos_procesados/2017-10-12_ie_longlat.tif")
+mi_edo_ie <- ie_longlat %>% 
+    crop(mi_edo_shp) %>% 
+    mask(mask = mi_edo_shp)
+mi_edo_ie[mi_edo_ie < 0] <- NA
+
+mi_edo_ie_v <- values(mi_edo_ie)
+
+etiquetas <- round(as.numeric(levels(Hmisc::cut2(mi_edo_ie_v, g = 6, levels.mean = TRUE))), 2)
+
+values(mi_edo_ie) <- mi_edo_ie_v
+
+etiquetas <- as.character(round(Hmisc::cut2(mi_edo_ie_v, g = 6, onlycuts = TRUE), 2))
+
+# grupos igualmente espaciados
+pal <- colorBin(palette = c("RdYlGn"), domain = c(0, 1), bins = 6,
+    na.color = "transparent")
+
+# cuantiles
+pal <- colorQuantile(palette = c("RdYlGn"), domain = NULL, n = 6,
+    na.color = "transparent")
+
+# mapa con integridad continua
+# pal <- colorNumeric(
+#   palette = "RdYlGn",
+#   domain = c(0, 1), na.color = "transparent")
+
+leaflet(data = mi_edo_shp) %>%
+    addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
+        opacity = 1.0, fillOpacity = 0.1) %>%
+        addTiles() %>%
+        fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, lat2 = ext@ymax) %>%
+        addProviderTiles(providers$Esri.WorldImagery) %>%
+        addRasterImage(mi_edo_ie, color = pal, opacity = 1) %>% 
+        addLegend("bottomright", pal = pal, values = c(0, 1),
+            title = "IE (2014)", opacity = 1)
+```
+</br>
+
+Con el fin de mostrar tanto el nivel de integridad en cada ANP como la 
+variación en la integridad tomamos para cada ANP una muestra aleatoria de 1000 
+pixeles y construimos diagramas de los valores de integridad de los pixeles en 
+la muestra. 
+
+- La **mediana** de la integridad de las ANPs está representada por las líneas 
+que dividen las cajas, si queremos pensar en un único valor para caracterizar la 
+integridad de una ANP podemos usar la mediana, con esto en mente las ANPs con mayor 
+integridad ecosistémica son las primeras y conforme descendemos en la gráfica
+disminuye la integridad.
+
+- Los puntos **azules** representan la **mediana** de integridad en los anillos de
+cada ANP, esto nos sirve para comparar la integridad de cada ANP con la 
+correspondiente al anillo que la rodea.
+
+- La longitud de las **cajas** es el rango intercuantil, esto es el 75% de los 
+valores centrales de integridad están contenidos en la caja. Y los puntos 
+grises corresponden a los pixeles que caen fuera del rango central.
+
+</br>
+
+<div style="clear:both">
+</div>
+
+#### Diversidad acústica
+
+El Índice de Entropía Composicional (ACE por sus siglas en inglés) intenta capturar 
+la diversidad de sonidos presentes en un paisaje acústico y es una medida de la 
+entropía asociada a la distribución de la energía sobre los diferentes canales 
+de frecuencia. El cálculo consiste de manera general en los siguientes pasos:
+
+1) A partir de cualquier espectrograma el rango de frecuencias considerado se 
+limita al intervalo 0-10 KHz
+2) Posteriormente se agrupan los canales de frecuencia en intervalos de 1 KHz
+3) Con los intervalos definidos se obtiene la doble integral de la energía sobre frecuencia y tiempo para cada uno, además de la integral correspondiente a la unión de todos los canales (energía total)
+4) Usando las energías por intervalo y la energía total se calcula un vector de composición energética que consiste en el cociente de la energía por intervalo y la energía total
+5) Con el vector de composición se calcula la entropía como la fórmula habitual de Shannon cambiando el logaritmo natural por el logaritmo base diez. Esta modificación permite que el índice tome un rango en el intervalo [0,1], lo cual facilita su interpretación.
+ 
+```{r}
+adi <- raster("../datos_procesados/2017-10-17_adi_longlat.tif")
+adi_dia <- raster("../datos_procesados/2017-10-17_adi_dia_longlat.tif")
+adi_noche <- raster("../datos_procesados/2017-10-17_adi_noche_longlat.tif")
+
+mi_edo_adi <- adi %>% 
+    crop(mi_edo_shp) %>% 
+    mask(mask = mi_edo_shp)
+
+mi_edo_adi_dia <- adi_dia %>% 
+    crop(mi_edo_shp) %>% 
+    mask(mask = mi_edo_shp)
+
+mi_edo_adi_noche <- adi_noche %>% 
+    crop(mi_edo_shp) %>% 
+    mask(mask = mi_edo_shp)
+
+pal <- colorBin(palette = c("RdYlGn"), domain = c(1.1, 3.2), bins = 6,
+    na.color = "transparent")
+
+# pal <- colorQuantile(palette = c("RdYlGn"), domain = NULL, n = 3,
+#     na.color = "transparent")
+
+leaflet(data = mi_edo_shp) %>% 
+    addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
+        opacity = 1.0, fillOpacity = 0.1) %>% 
+    addTiles() %>%
+    fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, lat2 = ext@ymax) %>% 
+    addProviderTiles(providers$Esri.WorldImagery) %>% 
+    addRasterImage(mi_edo_adi, color = pal, opacity = 0.8, group = "ACE") %>% 
+    addRasterImage(mi_edo_adi_dia, color = pal, opacity = 0.8, group = "ACE día") %>% 
+    addRasterImage(mi_edo_adi_noche, color = pal, opacity = 0.8, group = "ACE noche") %>% 
+    addLayersControl(
+        baseGroups = c("ACE", "ACE día", "ACE noche"),
+        options = layersControlOptions(collapsed = FALSE)
+        ) %>%
+    addLegend("bottomright", pal = pal, values = c(1.1, 3.2),
+            title = "ACE", opacity = 1)
+
+```
+
+
+### Referencias y materiales
+
+Gebhardt, S.; Wehrmann, T.; Ruiz, M.A.M.; Maeda, P.; Bishop, J.; Schramm, M.; Kopeinig, R.; Cartus, O.; Kellndorfer, J.; Ressl, R.; Santos, L.A.; Schmidt, M.	MAD-MEX: Automatic Wall-to-Wall Land Cover Monitoring for the Mexican REDD-MRV Program Using All Landsat Data. Remote Sens. 2014, 6, 3923-3943.
+
+Gebhardt, S.; Maeda, P.; Wehrmann, T.; Argumedo, J.; A PROPER LAND COVER AND FOREST TYPE CLASSIFICATION SCHEME FOR
+MEXICO. The International Archives of the Photogrammetry, Remote Sensing and Spatial Information Sciences, Volume XL-7/W3, 2015
+36th International Symposium on Remote Sensing of Environment, 11–15, May 2015, Berlin, Germany.
+
+Garcia-Alaniz, N.; Equihua, M.; Pérez-Maqueo O.;Equihua, J.;Pardo F.;Martínez, J.; Villela, S.; Schmidt, M., The Mexican National Biodiversity and Ecosystem Degradation Monitoring System, Current Opinion in Evironmental Sustainability, 2017, 26-27, 62–68.
+
+Hansen, M. C., P. V. Potapov, R. Moore, M. Hancher, S. A. Turubanova, A. Tyukavina, D. Thau, S. V. Stehman, S. J. Goetz, T. R. Loveland, A. Kommareddy, A. Egorov, L. Chini, C. O. Justice, and J. R. G. Townshend. 2013. “High-Resolution Global Maps of 21st-Century Forest Cover Change.” Science 342 (15 November): 850–53.
+
+Bryan C. Pijanowski, Luis J. Villanueva-Rivera, Sarah L. Dumyahn, Almo Farina, Bernie L. Krause, Brian M. Napoletano, Stuart H. Gage and Nadia Pieretti, Soundscape Ecology: The Science of Sound in the Landscape, BioScience, Vol. 61, No. 3 (March 2011), pp. 203-216, University of California Press on behalf of the American Institute of Biological Sciences
+
+Landsat imagery, NASA Land Processes Distributed Active Archive Center (LP DAAC) Products,These data are distributed by the Land Processes Distributed Active Archive Center (LP DAAC), located at USGS/EROS, Sioux Falls, SD. http://lpdaac.usgs.gov
+
