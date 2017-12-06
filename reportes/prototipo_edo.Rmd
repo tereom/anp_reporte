@@ -118,14 +118,12 @@ edo_eco_table %>%
         color = "#2F3526") 
 ```
 
-A lo largo del reporte los indicadores del estado se comparan con los 
-indicadores de otros estados con territorio de la misma ecorregión, esto se hace para poder contextuaizar 
-los valores obtenidos. Utilizamos la definición de ecorregión del mapa 
+A lo largo del reporte los indicadores del estado se comparan con los indicadores de otros estados con territorio de la misma ecorregión, esto se hace para poder contextuaizar los valores obtenidos. Utilizamos la definición de ecorregión del mapa 
 de [Ecorregiones terrestres de México (2008)](http://www.conabio.gob.mx/informacion/metadata/gis/ecort08gw.xml?_xsl=/db/metadata/xsl/fgdc_html.xsl&_indent=no) 
 elaborado por INEGI, CONABIO e INE.
 
-La tabla de abajo indica para cada ecorregión cuántas hectáreas hay en edos y el 
-número de edos con territorio en cada una.
+La tabla de abajo indica para cada ecorregión cuántas hectáreas hay en los estados y el 
+número de estados con territorio en cada una.
 
 ```{r, include=FALSE}
 edo_eco_df_table <- edo_eco_df %>%
@@ -145,20 +143,17 @@ edo_eco_df_table %>%
         color = "#2F3526")
 ```
 
-El edo `r mi_edo` pertenece a `r ifelse(length(mis_eco) > 1, str_c("la ecorregiones ", 
+El estado de `r mi_edo` pertenece a `r ifelse(length(mis_eco) > 1, str_c("la ecorregiones ", 
 str_c(mis_eco, collapse = ", ")), str_c("la ecorregión ", mis_eco))`, y por tanto
 en los siguientes análisis se compararán los indicadores de las edos con 
-territorio en `r str_c(mis_eco, collapse = ", ")`, consideramos aquellas edos con 
+territorio en `r str_c(mis_eco, collapse = ", ")`, consideramos aquellas estados con 
 al menos 1,000 hectáreas, estas se indican en la tabla de la derecha.
 
-A cada edo le asignamos la ecorregión de mayor prevalencia, es decir, si la edo
+A cada estado le asignamos la ecorregión de mayor prevalencia, es decir, si el estado
 pertenece a más de una ecorregión le asignamos aquella donde esté la mayor 
-parte de su terreno. En el caso de la edo *`r mi_edo_print`* se le asignó la ecorregión
-`r mis_eco`, que engloba el `r round(mi_edo_eco$p_area_eco)`% del área total de 
-la ANP. Por tanto, en los siguientes análisis se compararán los 
-indicadores de las ANPs asignadas a la ecorregión `r mis_eco`, 
-consideramos únicamente aquellas ANPs con al menos 1,000 hectáreas, estas se 
-indican en la tabla de la derecha.
+parte de su terreno. En el caso del estado de *`r mi_edo_print`* se le asignó la ecorregión
+`r mis_eco`, que engloba el `r round(mi_edo_eco$p_area_eco)`% del área total del estado. Por lo tanto, en los siguientes análisis se compararán los indicadores de los estados asignados a la ecorregión `r mis_eco`, 
+consideramos únicamente aquellos estados vecinos que se indican en la tabla de la derecha.
 
 ### Cobertura de suelo 
 
@@ -173,8 +168,8 @@ madmex_mi_edo <- madmex %>%
 madmex_mi_edo_v <- values(madmex_mi_edo)
 madmex_mi_edo_c <-  case_when(
         madmex_mi_edo_v == 1 ~ "bosque",
-        madmex_mi_edo_v == 2 ~ "slevas",
-        madmex_mi_edo_v == 3 ~ "matorrales",
+        madmex_mi_edo_v == 2 ~ "selva",
+        madmex_mi_edo_v == 3 ~ "matorral",
         madmex_mi_edo_v == 4 ~ "pastizal",
         madmex_mi_edo_v == 5 ~ "suelo desnudo",
         madmex_mi_edo_v == 6 ~ "humedal",
@@ -196,15 +191,14 @@ data.frame(round(prop.table(table(madmex_mi_edo_c)) * 100, 2)) %>%
 La clasificación de la cobertura de suelo se realiza con un algoritmo automatizado, 
 que genera un mapa con resolución espacial de 30 m^2^, construido a partir de 
 imágenes Landsat correspondientes al año 2010. Temáticamente se agregó para 
-contar con 10 clases:  bosque, selva, matorral, pastizal, 
-suelo desnudo, humedal, agricultura, asentamiento humano, agua y nieve/hielo.
+contar con 10 clases:  bosque, selva, matorral, pastizal, suelo desnudo, humedal, agricultura, asentamiento humano, agua y nieve/hielo.
 
-La tabla de la derecha nos muestra el porcentaje del área de la ANP *`r mi_edo_print`* 
+La tabla de la derecha nos muestra el porcentaje del estado *`r mi_edo_print`* 
 que pertence a cada clase de acuerdo al mapa 2010.
 
 </br>
 
-Veamos la composición espacial de las clases en la ANP *`r mi_edo_print`*.
+Veamos la composición espacial de las clases del estado de *`r mi_edo_print`*.
 
 ```{r madmex_mapa}
 ext <- raster::extent(mi_edo_shp)
@@ -261,9 +255,8 @@ cobertura.
 
 En las gráficas de abajo la línea roja representa la pérdida como porcentaje del 
 área total del estado y las líneas grises el equivalente en los otros estados.
-En la 
-gráfica del lado izquierdo podemos leer los resultados a total mientras 
-que los paneles del lado derecho cada cobertura de uso de suelo.
+En la gráfica del lado izquierdo podemos leer el resultado estatal total mientras 
+que los paneles del lado derecho vemos los resultados por cada cobertura de uso de suelo.
 
 ```{r deforestacion_tiempo, fig.width = 8, fig.height=4.5}
 load("../datos_procesados/2017-12-05_perdida_cobertura_edo.RData")
@@ -344,10 +337,8 @@ subplot(style(p1, traces = 1:2, showlegend = FALSE), p2, margin = 0.03)
 
 #### Integridad ecosistémica
 
-La integridad ecosistémica se reporta mediante un índice construído en colaboración
-de CONABIO e INECOL. Este índice relaciona de manera integral varios aespectos 
-de la biodiversidad a través de modelos llamados redes bayesianas. Estos modelos
-representan complejas relaciones intercruzadas entre variables descriptoras de los ecosistemas como lo son el tamaño y la cantidad de árboles presentes, y variables contextuales como lo son el clima y la topografía. Con base en esto, los modelos arrojan un predicción sobre el estado actual de los ecosistemas a lo largo del territorio nacional.
+La integridad ecosistémica se reporta mediante un índice construído por la CONABIO e INECOL. Este índice relaciona de manera integral varios aspectos de la biodiversidad a través de modelos llamados redes bayesianas. Estos modelos
+representan complejas relaciones intercruzadas entre variables descriptoras de los ecosistemas como lo son el tamaño y la cantidad de árboles presentes, y variables contextuales como el clima y la topografía. Con base en esto, los modelos arrojan un predicción sobre el estado actual de los ecosistemas a lo largo del territorio nacional.
 
 Para este reporte se trabajó con el mapa de integridad ecosistémica de 2014, 
 con una resolución de 250 m^2^, el índice de integridad está estandarizado de 
@@ -393,19 +384,19 @@ leaflet(data = mi_edo_shp) %>%
 ```
 </br>
 
-Con el fin de mostrar tanto el nivel de integridad en cada ANP como la 
-variación en la integridad tomamos para cada ANP una muestra aleatoria de 1000 
+Con el fin de mostrar tanto el nivel de integridad en cada estado como la 
+variación en la integridad tomamos para cada estado una muestra aleatoria de 1000 
 pixeles y construimos diagramas de los valores de integridad de los pixeles en 
 la muestra. 
 
-- La **mediana** de la integridad de las ANPs está representada por las líneas 
+- La **mediana** de la integridad de los estados está representada por las líneas 
 que dividen las cajas, si queremos pensar en un único valor para caracterizar la 
-integridad de una ANP podemos usar la mediana, con esto en mente las ANPs con mayor 
-integridad ecosistémica son las primeras y conforme descendemos en la gráfica
+integridad de un estado podemos usar la mediana, con esto en mente los estados con mayor 
+integridad ecosistémica son los primeros y conforme descendemos en la gráfica
 disminuye la integridad.
 
 - Los puntos **azules** representan la **mediana** de integridad en los anillos de
-cada ANP, esto nos sirve para comparar la integridad de cada ANP con la 
+cada estado, esto nos sirve para comparar la integridad de cada estado con la 
 correspondiente al anillo que la rodea.
 
 - La longitud de las **cajas** es el rango intercuantil, esto es el 75% de los 
