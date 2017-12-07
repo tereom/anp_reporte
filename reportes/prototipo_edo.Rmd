@@ -4,7 +4,7 @@ output:
         css: estilo.css
 params:
     mi_edo:
-        value: Morelos
+        value: Mexico
 ---
 <!-- css -->
 
@@ -145,7 +145,7 @@ edo_eco_df_table %>%
 
 El estado de `r mi_edo` pertenece a `r ifelse(length(mis_eco) > 1, str_c("la ecorregiones ", 
 str_c(mis_eco, collapse = ", ")), str_c("la ecorregión ", mis_eco))`, y por tanto
-en los siguientes análisis se compararán los indicadores de las edos con 
+en los siguientes análisis se compararán los indicadores de las estados con 
 territorio en `r str_c(mis_eco, collapse = ", ")`, consideramos aquellas estados con 
 al menos 1,000 hectáreas, estas se indican en la tabla de la derecha.
 
@@ -333,6 +333,86 @@ subplot(style(p1, traces = 1:2, showlegend = FALSE), p2, margin = 0.03)
 ```
 
 
+Con el fin de comparar el grado de pérdida boscosa entre las estados de una misma 
+construímos un índice de pérdida forestal, el índice considera la
+pérdida por ecorregión. Esto es porque es razonable considerar
+que algunas ecorregiones sean sujetas a mayor amenaza de pérdida forestal que otras. 
+
+```{r}
+load("../datos_procesados/2017-12-07_perdida_por_ecorregion.RData")
+
+# deforestación por ecorregión nacional últimos 5 años (% área perdida)
+eco_deforestacion <- country_loss_df %>% 
+    # mutate(anp = stringr::str_replace(anp, "anp_terrestres_2017_NOMBRE_", "")) %>% 
+    mutate(ultimos_5 = year_loss >= 11) %>% 
+    group_by(eco) %>% 
+    mutate(hectareas = sum(n)) %>% 
+    group_by(eco, ultimos_5) %>% 
+    summarise(deforestacion_eco = round(sum(n) / first(hectareas) * 100, 2)) %>% 
+    ungroup() %>% 
+    filter(ultimos_5) %>% 
+    select(-ultimos_5) %>% 
+    arrange(deforestacion_eco)
+
+defo_esperada <- edo_eco_df %>% 
+    select(edo, eco, p_area_eco) %>% 
+    left_join(eco_deforestacion) %>% 
+    group_by(edo) %>% 
+    summarise(defo_esp = p_area_eco %*% deforestacion_eco / 100)
+
+indice_deforestacion <- perdida_anual_porcentaje %>% 
+    filter(year_loss >= 2011) %>% 
+    group_by(edo) %>% 
+    summarise(defo_obs = sum(percent_loss)) %>% 
+    ungroup() %>% 
+    left_join(defo_esperada) %>% 
+    mutate(
+        ind_deforestacion = defo_obs - defo_esp, 
+        ind_cat = ind_deforestacion < 0
+        )
+
+eco_deforestacion %>% 
+    kable("html", col.names = c("", "% perdida")) %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+        position = "float_right", font_size = 11, full_width = FALSE) %>% 
+    row_spec(which(eco_deforestacion$eco %in% mis_eco), bold = F, color = "#79797d", 
+        background = "mistyrose") 
+```
+
+Adicionalmente, medimos la pérdida como el porcentaje del área total de cada
+estado perdida por deforestación en los últimos 5 años de datos, en este caso entre 2011 y 2016.
+La tabla de la derecha muestra el porcentaje de cobertura boscosa perdida en 
+cada ecorregión, en rosa se marcan aquellas ecorregiones presentes en *`r mi_edo_print`*.
+
+Una vez que calculamos la pérdida en cada ecorregión construimos
+el índice como la diferencia entre la pérdida de cada estado y la pérdida 
+esperada ponderando por el porcentaje de área que tiene el estado en cada
+ecorrgión, es así que si en un estado ocurrió más 
+pérdida boscosa que lo esperado por su composición, el índice tomará un valor 
+positivo. La gráfica de abajo indica el valor de los índices para los estados
+considerados.
+
+<div style="clear:both">
+</div>
+
+```{r deforestacion_region_conanp}
+indice_deforestacion_cl <- indice_deforestacion %>% 
+    left_join(edo_nombres, by = c("edo" = "edo_sin_acentos")) %>% 
+    arrange(ind_deforestacion)
+
+a <- ifelse(indice_deforestacion_cl$edo == mi_edo, "red", "gray30")
+ggplot(indice_deforestacion_cl,
+    aes(x = reorder(edo_corto, ind_deforestacion), y = ind_deforestacion)) + 
+    geom_bar(stat = 'identity', aes(fill = ind_cat), width = .5)  +
+    scale_fill_manual(name = "", 
+                    labels = c("mayor al esperado", "menor al esperado"), 
+                    values = c("FALSE" = "#f8766d", "TRUE" = "#00ba38")) + 
+  labs(title= "Pérdida boscosa en la región", x = "", y = "") + 
+    coord_flip() +
+    theme(axis.text.y = element_text(colour = a))
+  
+```
+
 ### Integridad y ACE
 
 #### Integridad ecosistémica
@@ -383,30 +463,6 @@ leaflet(data = mi_edo_shp) %>%
             title = "IE (2014)", opacity = 1)
 ```
 </br>
-
-Con el fin de mostrar tanto el nivel de integridad en cada estado como la 
-variación en la integridad tomamos para cada estado una muestra aleatoria de 1000 
-pixeles y construimos diagramas de los valores de integridad de los pixeles en 
-la muestra. 
-
-- La **mediana** de la integridad de los estados está representada por las líneas 
-que dividen las cajas, si queremos pensar en un único valor para caracterizar la 
-integridad de un estado podemos usar la mediana, con esto en mente los estados con mayor 
-integridad ecosistémica son los primeros y conforme descendemos en la gráfica
-disminuye la integridad.
-
-- Los puntos **azules** representan la **mediana** de integridad en los anillos de
-cada estado, esto nos sirve para comparar la integridad de cada estado con la 
-correspondiente al anillo que la rodea.
-
-- La longitud de las **cajas** es el rango intercuantil, esto es el 75% de los 
-valores centrales de integridad están contenidos en la caja. Y los puntos 
-grises corresponden a los pixeles que caen fuera del rango central.
-
-</br>
-
-<div style="clear:both">
-</div>
 
 #### Diversidad acústica
 
