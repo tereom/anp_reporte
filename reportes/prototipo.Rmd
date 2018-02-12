@@ -49,12 +49,17 @@ mi_anp_print <- str_replace_all(mi_anp_nombres$anp, "_", " ")
 
 ```{r, eval = TRUE}
 path_anps_shp <- "../datos_insumo/shapes_anp/anp_sinBuffer/"
+path_anps_rings_shp <- "../datos_insumo/shapes_anp/anp_rings/"
 
 mi_anp_shp_file <- list.files(path_anps_shp, 
     pattern = str_c(mi_anp, ".shp"), recursive = FALSE) %>%
     tools::file_path_sans_ext() 
 
 mi_anp_shp <- readOGR(path_anps_shp, mi_anp_shp_file, verbose = FALSE)
+mi_anp_ring_shp <- readOGR(path_anps_rings_shp, str_c(mi_anp_shp_file, "_ring"), 
+    verbose = FALSE)
+
+mi_anp_buffer_shp <- union(mi_anp_shp, mi_anp_ring_shp)
 ```
 
 
@@ -287,12 +292,12 @@ que pertence a cada clase de acuerdo al mapa 2010.
 Veamos la composición espacial de las clases en la ANP *`r mi_anp_print`*.
 
 ```{r madmex_mapa}
-ext <- raster::extent(mi_anp_shp)
+ext <- raster::extent(mi_anp_buffer_shp)
 colores_madmex <- c('#b2df8a', '#33a02c', '#fb9a99', '#e31a1c', '#fdbf6f', 
     '#ff7f00', '#cab2d6', '#6a3d9a', '#a6cee3', '#1f78b4')
 pal <- colorFactor(palette = colores_madmex, domain = 1:10, na.color = "transparent")
 
-leaflet(data = mi_anp_shp) %>% 
+leaflet(data = mi_anp_buffer_shp) %>% 
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
         opacity = 1.0, fillOpacity = 0.1) %>% 
 #         addTiles() %>%
@@ -322,12 +327,12 @@ cobertura forestal en los últimos 5 años de datos, esto es entre 2011 y 2016.
 hansen_loss <- raster("../datos_insumo/hansen_forest_loss_v1_4_wgs84nodefs.tif")
 
 hansen_mi_anp <- hansen_loss %>% 
-    raster::crop(mi_anp_shp) %>%            # cortamos el raster a la dimensión del ANP
-    mask(mask = mi_anp_shp)
+    raster::crop(mi_anp_buffer_shp) %>%            # cortamos el raster a la dimensión del ANP
+    mask(mask = mi_anp_buffer_shp)
 hansen_mi_anp[hansen_mi_anp < 11] <- NA
 
-ext <- raster::extent(mi_anp_shp)
-leaflet(data = mi_anp_shp) %>% 
+ext <- raster::extent(mi_anp_buffer_shp)
+leaflet(data = mi_anp_buffer_shp) %>% 
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
         opacity = 1.0, fillOpacity = 0.1) %>% 
 #         addTiles() %>%
@@ -557,8 +562,8 @@ manera que toma valores entre 0 y 1, donde 1 es el mayor valor de integridad.
 ```{r mapa_ie, message=FALSE, warning=FALSE}
 ie_longlat <- raster("../datos_procesados/2017-10-12_ie_longlat.tif")
 mi_anp_ie <- ie_longlat %>% 
-    crop(mi_anp_shp) %>% 
-    mask(mask = mi_anp_shp)
+    crop(mi_anp_buffer_shp) %>% 
+    mask(mask = mi_anp_buffer_shp)
 mi_anp_ie[mi_anp_ie < 0] <- NA
 
 mi_anp_ie_v <- values(mi_anp_ie)
@@ -582,7 +587,7 @@ pal <- colorQuantile(palette = c("RdYlGn"), domain = NULL, n = 6,
 #   palette = "RdYlGn",
 #   domain = c(0, 1), na.color = "transparent")
 
-leaflet(data = mi_anp_shp) %>%
+leaflet(data = mi_anp_buffer_shp) %>%
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
         opacity = 1.0, fillOpacity = 0.1) %>%
 #         addTiles() %>%
@@ -739,16 +744,16 @@ adi_dia <- raster("../datos_procesados/2017-10-17_adi_dia_longlat.tif")
 adi_noche <- raster("../datos_procesados/2017-10-17_adi_noche_longlat.tif")
 
 mi_anp_adi <- adi %>% 
-    crop(mi_anp_shp) %>% 
-    mask(mask = mi_anp_shp)
+    crop(mi_anp_buffer_shp) %>% 
+    mask(mask = mi_anp_buffer_shp)
 
 mi_anp_adi_dia <- adi_dia %>% 
-    crop(mi_anp_shp) %>% 
-    mask(mask = mi_anp_shp)
+    crop(mi_anp_buffer_shp) %>% 
+    mask(mask = mi_anp_buffer_shp)
 
 mi_anp_adi_noche <- adi_noche %>% 
-    crop(mi_anp_shp) %>% 
-    mask(mask = mi_anp_shp)
+    crop(mi_anp_buffer_shp) %>% 
+    mask(mask = mi_anp_buffer_shp)
 
 pal <- colorBin(palette = c("RdYlGn"), domain = c(1.1, 3.2), bins = 6,
     na.color = "transparent")
@@ -756,7 +761,7 @@ pal <- colorBin(palette = c("RdYlGn"), domain = c(1.1, 3.2), bins = 6,
 # pal <- colorQuantile(palette = c("RdYlGn"), domain = NULL, n = 3,
 #     na.color = "transparent")
 
-leaflet(data = mi_anp_shp) %>% 
+leaflet(data = mi_anp_buffer_shp) %>% 
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
         opacity = 1.0, fillOpacity = 0.1) %>% 
 #     addTiles() %>%
@@ -773,6 +778,14 @@ leaflet(data = mi_anp_shp) %>%
             title = "ACE", opacity = 1)
 
 ```
+
+
+### Puma: ideoneidad de hábitat
+
+```{r}
+
+```
+
 
 
 ### Referencias y materiales
