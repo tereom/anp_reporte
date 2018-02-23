@@ -68,8 +68,8 @@ tabla_suit_rings <- map_df(anps_ring_shp[!(anps_shp %in% quitar)],
     ~anp_suitability(., path_anps_rings_shp))
 
 
-save(tabla_suit, file = "datos_procesados/2018-02-12_suitability.RData")
-save(tabla_suit_rings, file = "datos_procesados/2018-02-12_suitability_rings.RData")
+save(tabla_suit, file = "../datos_procesados/2018-02-12_suitability.RData")
+save(tabla_suit_rings, file = "../datos_procesados/2018-02-12_suitability_rings.RData")
 
 
 
