@@ -9,7 +9,7 @@ params:
 <!-- css -->
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
-library(DT)
+# library(DT)
 library(raster)
 library(rgdal)
 library(sp)
@@ -48,7 +48,7 @@ mi_anp_print <- str_replace_all(mi_anp_nombres$anp, "_", " ")
 
 #### Ecorregiones 
 
-```{r, eval = TRUE}
+```{r}
 path_anps_shp <- "../datos_insumo/shapes_anp/anp_sinBuffer/"
 path_anps_rings_shp <- "../datos_insumo/shapes_anp/anp_rings/"
 
@@ -346,11 +346,18 @@ leaflet(data = mi_anp_shp) %>%
 Ahora veamos el impacto de la deforestación año a año, y para cada tipo de 
 cobertura.
 
-En las gráficas de abajo la línea roja representa la pérdida como porcentaje del 
+<!-- En las gráficas de abajo la línea roja representa la pérdida como porcentaje del 
 área total del ANP, la línea azul representa el porcentaje de área perdida en el 
 anillo y las líneas grises el equivalente en las ANPs de la ecorregión. En la 
 gráfica del lado izquierdo podemos leer los resultados a total mientras 
-que los paneles del lado derecho cada cobertura de uso de suelo.
+que los paneles del lado derecho cada cobertura de uso de suelo. -->
+
+En las gráficas de abajo la línea roja representa la transformación de cobertura boscosa en la ANP, 
+la línea azul representa la misma transformación en el anillo circunante
+y las líneas grises el equivalente en las ANPs de la ecorregión. En la 
+gráfica del lado izquierdo podemos leer los resultados a total mientras 
+que los paneles del lado derecho cada cobertura de uso de suelo. Al situar el 
+cursor sobre la gráfica se informa también la pérdida de cobertura boscosa media en hectáreas.
 
 ```{r deforestacion_tiempo, fig.width = 8, fig.height=4.5}
 load("../datos_procesados/2017-10-22_perdida_cobertura.RData")
@@ -384,33 +391,33 @@ perdida_anual_porcentaje <- perdida_anps_df %>%
     ungroup()
 
 
-perdida_anual_porcentaje_mi_anp <- filter(perdida_anual_porcentaje, anp == mi_anp)
-perdida_anual_porcentaje_mi_anp_ring <- filter(perdida_anual_porcentaje, anp == str_c(mi_anp, "_ring"))
-
+# perdida_anual_porcentaje_mi_anp <- filter(perdida_anual_porcentaje, anp == mi_anp)
+# perdida_anual_porcentaje_mi_anp_ring <- filter(perdida_anual_porcentaje, anp == str_c(mi_anp, "_ring"))
+# 
 escala_color <- c("gray50", "#005b96", "#ff420e")
 names(escala_color) <- c("otras", "anillo", mi_anp_corto)
 escala_alpha <- c(0.1, 0.8, 1)
 names(escala_alpha) <- c("otras", "anillo", mi_anp_corto)
-
-# limpiamos para etiquetas en español
-perdida_anual_porcentaje_cl <- perdida_anual_porcentaje %>% 
-    left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
-    mutate(
-        anp = ifelse(anp == stringr::str_c(mi_anp, "_ring"), 
-            str_c(mi_anp_corto, " anillo"), anp_corto),
-        ) %>% 
-    select(ANP = anp, año = year_loss, perdida = percent_loss, perdida_ha = ha_loss, clase)
-
-perdida_anual_plot <- ggplot(perdida_anual_porcentaje_cl, aes(x = año, 
-    y = perdida, group = ANP, label = perdida_ha)) + 
-    geom_line(aes(color = clase, alpha = clase)) +
-    scale_alpha_manual(values = escala_alpha) +
-    scale_color_manual(values = escala_color) +
-    labs(y = "% área", x = "año", title = "Pérdida anual", color = "", 
-         alpha = "") +
-    ylim(0, max(quantile(perdida_anual_porcentaje$percent_loss, 0.8),
-        max(perdida_anual_porcentaje_mi_anp$percent_loss),
-        max(perdida_anual_porcentaje_mi_anp_ring$percent_loss)))
+# 
+# # limpiamos para etiquetas en español
+# perdida_anual_porcentaje_cl <- perdida_anual_porcentaje %>% 
+#     left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
+#     mutate(
+#         anp = ifelse(anp == stringr::str_c(mi_anp, "_ring"), 
+#             str_c(mi_anp_corto, " anillo"), anp_corto),
+#         ) %>% 
+#     select(ANP = anp, año = year_loss, perdida = percent_loss, perdida_ha = ha_loss, clase)
+# 
+# perdida_anual_plot <- ggplot(perdida_anual_porcentaje_cl, aes(x = año, 
+#     y = perdida, group = ANP, label = perdida_ha)) + 
+#     geom_line(aes(color = clase, alpha = clase)) +
+#     scale_alpha_manual(values = escala_alpha) +
+#     scale_color_manual(values = escala_color) +
+#     labs(y = "% área", x = "año", title = "Pérdida anual", color = "", 
+#          alpha = "") +
+#     ylim(0, max(quantile(perdida_anual_porcentaje$percent_loss, 0.8),
+#         max(perdida_anual_porcentaje_mi_anp$percent_loss),
+#         max(perdida_anual_porcentaje_mi_anp_ring$percent_loss)))
 
 perdida_anual_cobertura_porcentaje <- perdida_anps_df %>% 
     group_by(year_loss, anp, clase, clase_madmex) %>% 
@@ -427,36 +434,36 @@ perdida_anual_cobertura_porcentaje <- perdida_anps_df %>%
         clase_madmex == 6 ~ "humedal")
         )
 
-perdida_anual_cobertura_mi_anp <- filter(perdida_anual_cobertura_porcentaje, anp == mi_anp)
-perdida_anual_cobertura_mi_anp_ring <- filter(perdida_anual_cobertura_porcentaje, anp == str_c(mi_anp, "_ring"))
-
-perdida_anual_cobertura_porcentaje_cl <- perdida_anual_cobertura_porcentaje %>% 
-    left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
-    mutate(
-        anp = ifelse(anp == stringr::str_c(mi_anp, "_ring"), 
-            str_c(mi_anp_corto, " anillo"), anp_corto),
-        )  %>% 
-    select(ANP = anp, año = year_loss, perdida = percent_loss, perdida_ha = ha_loss, 
-        clase, clase_madmex)
+# perdida_anual_cobertura_mi_anp <- filter(perdida_anual_cobertura_porcentaje, anp == mi_anp)
+# perdida_anual_cobertura_mi_anp_ring <- filter(perdida_anual_cobertura_porcentaje, anp == str_c(mi_anp, "_ring"))
+# 
+# perdida_anual_cobertura_porcentaje_cl <- perdida_anual_cobertura_porcentaje %>% 
+#     left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
+#     mutate(
+#         anp = ifelse(anp == stringr::str_c(mi_anp, "_ring"), 
+#             str_c(mi_anp_corto, " anillo"), anp_corto),
+#         )  %>% 
+#     select(ANP = anp, año = year_loss, perdida = percent_loss, perdida_ha = ha_loss, 
+#         clase, clase_madmex)
  
-perdida_anual_cobertura_plot <- ggplot(perdida_anual_cobertura_porcentaje_cl, 
-    aes(x = año, y = perdida, label = perdida_ha, group = ANP)) + 
-    geom_line(aes(color = clase, alpha = clase), show.legend = FALSE) +
-    scale_alpha_manual(values = escala_alpha) +
-    scale_color_manual(values = escala_color) +
-    facet_wrap(~clase_madmex) +
-    labs(y = "% área", x = "año", title = "Pérdida anual (% área)", color = "", 
-         alpha = "") +
-    ylim(0, max(quantile(perdida_anual_cobertura_porcentaje$percent_loss, 0.8),
-        max(perdida_anual_cobertura_mi_anp$percent_loss), 
-        max(perdida_anual_cobertura_mi_anp_ring$percent_loss)))
-
-vars_tooltip <- c("ANP", "perdida_ha", "perdida", "año")
-p1 <- ggplotly(perdida_anual_plot, tooltip = vars_tooltip, 
-                 dynamicTicks = TRUE)
-p2 <- ggplotly(perdida_anual_cobertura_plot, tooltip = vars_tooltip, 
-                 dynamicTicks = TRUE)
-subplot(style(p1, traces = 1:3, showlegend = FALSE), p2, margin = 0.03)
+# perdida_anual_cobertura_plot <- ggplot(perdida_anual_cobertura_porcentaje_cl, 
+#     aes(x = año, y = perdida, label = perdida_ha, group = ANP)) + 
+#     geom_line(aes(color = clase, alpha = clase), show.legend = FALSE) +
+#     scale_alpha_manual(values = escala_alpha) +
+#     scale_color_manual(values = escala_color) +
+#     facet_wrap(~clase_madmex) +
+#     labs(y = "% área", x = "año", title = "Pérdida anual (% área)", color = "", 
+#          alpha = "") +
+#     ylim(0, max(quantile(perdida_anual_cobertura_porcentaje$percent_loss, 0.8),
+#         max(perdida_anual_cobertura_mi_anp$percent_loss), 
+#         max(perdida_anual_cobertura_mi_anp_ring$percent_loss)))
+# 
+# vars_tooltip <- c("ANP", "perdida_ha", "perdida", "año")
+# p1 <- ggplotly(perdida_anual_plot, tooltip = vars_tooltip, 
+#                  dynamicTicks = TRUE)
+# p2 <- ggplotly(perdida_anual_cobertura_plot, tooltip = vars_tooltip, 
+#                  dynamicTicks = TRUE)
+# subplot(style(p1, traces = 1:3, showlegend = FALSE), p2, margin = 0.03)
 ```
 
 
@@ -482,21 +489,33 @@ tasa_cambio <- tasa_cambio_aux %>%
         ) %>% 
     filter(year_loss > 2000) %>% 
     ungroup() %>% 
-    select(ANP = anp, año = year_loss, THH = tasa_cambio, clase)
+    select(anp, year_loss, tasa_cambio, clase)
 
-tasa_cambio_mi_anp <- filter(tasa_cambio, ANP == mi_anp)
-tasa_cambio_mi_anp_ring <- filter(tasa_cambio, ANP == str_c(mi_anp, "_ring"))
+tasa_cambio_cl <- tasa_cambio %>% 
+  left_join(perdida_anual_porcentaje, by = c("anp", "year_loss", "clase")) %>% 
+  left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
+    mutate(
+        anp_corto = ifelse(anp == stringr::str_c(mi_anp, "_ring"), 
+            str_c(mi_anp_corto, " anillo"), anp_corto),
+        ) %>% 
+    select(anp, ANP = anp_corto, año = year_loss, THH = tasa_cambio, perdida_ha = ha_loss, clase)
 
-tasa_cambio_plot <- ggplot(tasa_cambio, aes(x = año, 
-    y = THH, group = ANP)) + 
+tasa_cambio_mi_anp <- filter(tasa_cambio_cl, anp == mi_anp)
+tasa_cambio_mi_anp_ring <- filter(tasa_cambio_cl, anp == str_c(mi_anp, "_ring"))
+
+tasa_cambio_plot <- ggplot(tasa_cambio_cl, aes(x = año, 
+    y = THH, group = ANP, label = perdida_ha)) + 
     geom_line(aes(color = clase, alpha = clase)) +
     scale_alpha_manual(values = escala_alpha) +
     scale_color_manual(values = escala_color) +
     labs(y = "%", x = "año", title = "THH (%)", color = "", 
          alpha = "") +
-    ylim(min(quantile(tasa_cambio$THH, 0.2),
+    ylim(min(quantile(tasa_cambio_cl$THH, 0.2),
         min(tasa_cambio_mi_anp$THH),
-        min(tasa_cambio_mi_anp_ring$THH)), max(tasa_cambio$THH))
+        min(tasa_cambio_mi_anp_ring$THH)), 
+        max(quantile(tasa_cambio_cl$THH, 0.8), 
+            max(tasa_cambio_mi_anp$THH),
+            max(tasa_cambio_mi_anp_ring$THH)))
 
 tasa_cambio_clase_aux <- perdida_anps_df %>% 
     filter(clase_madmex %in% c(1:3, 6)) %>% 
@@ -522,25 +541,37 @@ tasa_cambio_clase <- tasa_cambio_clase_aux %>%
         clase_madmex == 3 ~ "matorrales", 
         clase_madmex == 6 ~ "humedal")
         ) %>% 
-    select(ANP = anp, año = year_loss, THH = tasa_cambio, clase, clase_madmex)
+    select(anp, year_loss, tasa_cambio, clase, clase_madmex)
 
-tasa_cambio_clase_mi_anp <- filter(tasa_cambio_clase, ANP == mi_anp)
-tasa_cambio_clase_mi_anp_ring <- filter(tasa_cambio_clase, ANP == str_c(mi_anp, "_ring"))
+tasa_cambio_clase_cl <- tasa_cambio_clase %>% 
+  left_join(perdida_anual_cobertura_porcentaje, by = c("anp", "year_loss", "clase", "clase_madmex")) %>% 
+  left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
+    mutate(
+        anp_corto = ifelse(anp == stringr::str_c(mi_anp, "_ring"), 
+            str_c(mi_anp_corto, " anillo"), anp_corto),
+        ) %>% 
+    select(anp, ANP = anp_corto, año = year_loss, THH = tasa_cambio, perdida_ha = ha_loss, 
+           clase, clase_madmex)
 
-tasa_cambio_clase_plot <-ggplot(tasa_cambio_clase, aes(x = año, 
-    y = THH, group = ANP)) + 
+tasa_cambio_clase_mi_anp <- filter(tasa_cambio_clase_cl, anp == mi_anp)
+tasa_cambio_clase_mi_anp_ring <- filter(tasa_cambio_clase_cl, anp == str_c(mi_anp, "_ring"))
+
+tasa_cambio_clase_plot <- ggplot(tasa_cambio_clase_cl, aes(x = año, 
+    y = THH, group = ANP, label = perdida_ha)) + 
     geom_line(aes(color = clase, alpha = clase)) +
     scale_alpha_manual(values = escala_alpha) +
     scale_color_manual(values = escala_color) +
     labs(y = "%", x = "año", title = "THH (%)", color = "", 
          alpha = "") +
     facet_wrap(~clase_madmex) +
-    ylim(min(quantile(tasa_cambio_clase$THH, 0.2),
+    ylim(min(quantile(tasa_cambio_clase_cl$THH, 0.2),
         min(tasa_cambio_clase_mi_anp$THH),
-        min(tasa_cambio_clase_mi_anp_ring$THH)), max(tasa_cambio$THH))
+        min(tasa_cambio_clase_mi_anp_ring$THH)), 
+        max(quantile(tasa_cambio_clase_cl$THH, 0.8), 
+            max(tasa_cambio_clase_mi_anp$THH),
+            max(tasa_cambio_clase_mi_anp_ring$THH)))
 
-
-vars_tooltip <- c("ANP", "tasa_cambio", "año")
+vars_tooltip <- c("ANP", "año", "THH", "perdida_ha")
 p1 <- ggplotly(tasa_cambio_plot, tooltip = vars_tooltip, 
                  dynamicTicks = TRUE)
 p2 <- ggplotly(tasa_cambio_clase_plot, tooltip = vars_tooltip, 
@@ -918,8 +949,8 @@ anp_buffer_suit <- suit_2014 %>%
     raster::crop(mi_anp_shp) %>%            # cortamos el raster a la dimensión del ANP
     raster::mask(mask = mi_anp_shp) 
 
-pal <- colorBin(palette = c("Blues"), domain = c(1, 0), bins = 6,
-    na.color = "transparent", reverse = TRUE)
+pal <- colorBin(palette = c("Oranges"), domain = c(1, 0), bins = 6,
+    na.color = "transparent", reverse = FALSE)
 
 ext <- raster::extent(mi_anp_buffer_shp)
 
@@ -928,12 +959,13 @@ leaflet(data = mi_anp_shp) %>%
         opacity = 1.0, fillOpacity = 0) %>% 
     fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, lat2 = ext@ymax) %>% 
     addProviderTiles(providers$Esri.WorldImagery) %>% 
-    addRasterImage(anp_buffer_suit, color = pal, opacity = 1) %>% 
+    addRasterImage(anp_buffer_suit, color = pal, opacity = 0.8) %>% 
     addLegend("bottomright", pal = pal, values = c(0, 1), title = "IH (2014)", 
         opacity = 1)
 
 
 ```
+
 ```{r}
 p_75 <- quantile(values(anp_buffer_suit), prob = 0.75, na.rm = TRUE)
 ```
@@ -951,7 +983,7 @@ leaflet(data = mi_anp_shp) %>%
         opacity = 1.0, fillOpacity = 0) %>% 
     fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, lat2 = ext@ymax) %>% 
     addProviderTiles(providers$Esri.WorldImagery) %>% 
-    addRasterImage(anp_buffer_75, color = "white", opacity = 0.8)
+    addRasterImage(anp_buffer_75, color = "#8c2d04", opacity = 0.8)
 ```
 
 La siguiente gráfica nos muestra la distribución de la idoneidad a lo largo de 
@@ -988,7 +1020,8 @@ mediana_rings <- tabla_suit_rings_l %>%
     summarise(mediana = median(suit, na.rm = TRUE))
 
 # graficamos boxplots por año con muestra de tamaño 1000, mismos pixeles
-coords_sample <- sample(unique(tabla_suit_l$id), size = 1000)
+coords_sample <- sample(unique(tabla_suit_l$id), size = min(1000, 
+    n_distinct(tabla_suit_l$id)))
 
 filter(tabla_suit_l, id %in% coords_sample) %>% 
 ggplot(aes(x = factor(anio), y = suit)) +
@@ -999,12 +1032,13 @@ ggplot(aes(x = factor(anio), y = suit)) +
     labs(x = "año", y = "", title = "Idoneidad de hábitat")
 ```
 
-
+<!--
 Percentil 75 de idoneidad en la ANP y el anillo que la rodea. La línea roja 
 corresponde a la ANP y la 
 línea azúl al anillo.
+-->
 
-```{r, fig.width=4, fig.height=3}
+```{r, fig.width=4, fig.height=3, echo=FALSE, include=FALSE}
 tabla_suit_l <- tabla_suit %>% 
     as_tibble() %>% 
     filter(anp == mi_anp) %>% 
