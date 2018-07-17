@@ -25,6 +25,8 @@ library(plotly)
 library(leaflet)
 library(tidyr)
 
+# library(rmapshaper)
+
 knitr::opts_chunk$set(echo = FALSE, fig.align="center", message = FALSE, 
     warning = FALSE, cache = TRUE)
 comma <- function(x) format(x, digits = 3, big.mark = ",")
@@ -57,10 +59,13 @@ mi_anp_shp_file <- list.files(path_anps_shp,
     tools::file_path_sans_ext() 
 
 mi_anp_shp <- readOGR(path_anps_shp, mi_anp_shp_file, verbose = FALSE)
+# mi_anp_shp <- rmapshaper::ms_simplify(mi_anp_shp)
+
 mi_anp_ring_shp <- readOGR(path_anps_rings_shp, str_c(mi_anp_shp_file, "_ring"), 
     verbose = FALSE)
+# mi_anp_ring_shp <- rmapshaper::ms_simplify(mi_anp_ring_shp)
 
-mi_anp_buffer_shp <- raster::union(mi_anp_shp, mi_anp_ring_shp)
+# mi_anp_buffer_shp <- raster::union(mi_anp_shp, mi_anp_ring_shp)
 ```
 
 
@@ -90,8 +95,10 @@ anp_rings_eco_df <- anp_rings_eco_df %>%
 
 mi_anp_eco <- anp_eco_df %>% filter(anp == mi_anp)
 mis_eco <- mi_anp_eco %>% pull(eco)
-mis_anps <- anp_eco_df %>% 
-    filter(eco %in% mis_eco, hectareas >= 1000) %>% pull(anp) %>% union(mi_anp)
+mis_anps_df <- anp_eco_df %>% 
+    filter(eco %in% mis_eco)
+if(nrow(mis_anps_df) > 10) mis_anps_df <- filter(mis_anps_df, hectareas >= 1000)
+mis_anps <- mis_anps_df %>% pull(anp) %>% union(mi_anp)
 
 anp_eco_table <- anp_eco_df %>% 
     filter(anp %in% mis_anps, !is.na(anp)) %>% 
@@ -121,9 +128,9 @@ anp_eco_table %>%
 ```
 
 A lo largo del reporte los indicadores de la ANP objetivo se comparan con los 
-indicadores de otras ANPs de la misma ecorregión, esto se hace para poder contextuaizar 
-los valores obtenidos. Utilizamos la definición de ecorregión del mapa 
-de [Ecorregiones terrestres de México (2008)](http://www.conabio.gob.mx/informacion/metadata/gis/ecort08gw.xml?_xsl=/db/metadata/xsl/fgdc_html.xsl&_indent=no) 
+indicadores de otras ANPs de la misma ecorregión, esto se hace para poder 
+contextuaizar los valores obtenidos. Utilizamos la definición de ecorregión del 
+mapa de [Ecorregiones terrestres de México (2008)](http://www.conabio.gob.mx/informacion/metadata/gis/ecort08gw.xml?_xsl=/db/metadata/xsl/fgdc_html.xsl&_indent=no) 
 elaborado por INEGI, CONABIO e INE.
 
 La tabla de abajo indica para cada ecorregión cuántas hectáreas hay en ANPs y el 
@@ -300,12 +307,13 @@ pal <- colorFactor(palette = colores_madmex, domain = 1:10, na.color = "transpar
 
 leaflet(data = mi_anp_shp) %>% 
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
-        opacity = 1.0, fillOpacity = 0.1) %>% 
+        opacity = 1.0, fillOpacity = 0.2) %>% 
 #         addTiles() %>%
-        fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, lat2 = ext@ymax) %>% 
+        fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, 
+            lat2 = ext@ymax) %>% 
         addProviderTiles(providers$Esri.WorldImagery) %>% 
         addRasterImage(madmex_mi_anp, color = pal, opacity = 0.6, 
-            maxBytes = 8 * 1024 * 1024) %>% 
+            maxBytes = 8 * 1024 * 1024, project = FALSE) %>% 
         addLegend("bottomright", values = 1:10, colors = colores_madmex,
             title = "MAD-MEX (2010)", labels = c("bosques", "selvas", "matorrales", 
                 "pastizal", "sin vegetación aparente", "humedal", "agricultura", 
@@ -313,7 +321,7 @@ leaflet(data = mi_anp_shp) %>%
 ```
 
 
-#### Pérdida de cobertura boscosa
+#### Tasa de transformación de cobertura boscosa
 <!--
 Utilizamos los datos de [Cambios en cobertura forestal](https://earthenginepartners.appspot.com/science-2013-global-forest) de 
 Hansen, Potapov, Moore, Hancher et al. Estos datos son resultado de análisis de 
@@ -335,11 +343,12 @@ hansen_mi_anp[hansen_mi_anp < 11] <- NA
 ext <- raster::extent(mi_anp_shp)
 leaflet(data = mi_anp_shp) %>% 
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
-        opacity = 1.0, fillOpacity = 0.1) %>% 
+        opacity = 1.0, fillOpacity = 0.2) %>% 
 #         addTiles() %>%
-        fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, lat2 = ext@ymax) %>% 
+        fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, 
+            lat2 = ext@ymax) %>% 
         addProviderTiles(providers$Esri.WorldImagery) %>% 
-        addRasterImage(hansen_mi_anp, colors = "red")
+        addRasterImage(hansen_mi_anp, colors = "red", project=FALSE)
 ```
 </br>
 
@@ -353,7 +362,7 @@ gráfica del lado izquierdo podemos leer los resultados a total mientras
 que los paneles del lado derecho cada cobertura de uso de suelo. -->
 
 En las gráficas de abajo la línea roja representa la transformación de cobertura boscosa en la ANP, 
-la línea azul representa la misma transformación en el anillo circunante
+la línea azul representa la misma transformación en el anillo circundante
 y las líneas grises el equivalente en las ANPs de la ecorregión. En la 
 gráfica del lado izquierdo podemos leer los resultados a total mientras 
 que los paneles del lado derecho cada cobertura de uso de suelo. Al situar el 
@@ -686,8 +695,15 @@ manera que toma valores entre 0 y 1, donde 1 es el mayor valor de integridad.
 ```{r mapa_ie, message=FALSE, warning=FALSE}
 ie_longlat <- raster("../datos_procesados/2017-10-12_ie_longlat.tif")
 mi_anp_ie <- ie_longlat %>% 
-    crop(mi_anp_shp) %>% 
+    raster::crop(mi_anp_shp) %>% 
     mask(mask = mi_anp_shp)
+if (sum(!is.na(values(mi_anp_ie))) == 0){
+    mi_anp_shp_aux <- spTransform(mi_anp_shp, CRS("+init=epsg:3347")) %>% 
+        
+  mi_anp_ie <- ie_longlat %>% 
+    raster::crop(mi_anp_shp) %>% 
+    mask(mask = mi_anp_shp)  
+}
 mi_anp_ie[mi_anp_ie < 0] <- NA
 
 mi_anp_ie_v <- values(mi_anp_ie)
@@ -713,7 +729,7 @@ pal <- colorQuantile(palette = c("RdYlGn"), domain = NULL, n = 6,
 
 leaflet(data = mi_anp_shp) %>%
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
-        opacity = 1.0, fillOpacity = 0.1) %>%
+        opacity = 1.0, fillOpacity = 0.2) %>%
 #         addTiles() %>%
         fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, lat2 = ext@ymax) %>%
         addProviderTiles(providers$Esri.WorldImagery) %>%
@@ -839,7 +855,7 @@ disminuye la integridad.
 cada ANP, esto nos sirve para comparar la integridad de cada ANP con la 
 correspondiente al anillo que la rodea.
 
-- La longitud de las **cajas** es el rango intercuantil, esto es el 75% de los 
+- La longitud de las **cajas** es el rango intercuantil, esto es el 50% de los 
 valores centrales de integridad están contenidos en la caja. Y los puntos 
 grises corresponden a los pixeles que caen fuera del rango central.
 
@@ -887,7 +903,7 @@ pal <- colorBin(palette = c("RdYlGn"), domain = c(1.1, 3.2), bins = 6,
 
 leaflet(data = mi_anp_shp) %>% 
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
-        opacity = 1.0, fillOpacity = 0.1) %>% 
+        opacity = 1.0, fillOpacity = 0.2) %>% 
 #     addTiles() %>%
     fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, lat2 = ext@ymax) %>% 
     addProviderTiles(providers$Esri.WorldImagery) %>% 
@@ -945,21 +961,19 @@ El siguiente mapa nos muestra las variaciones en la idoneidad dentro de la ANP
 ```{r}
 suit_2014 <- raster::raster("../datos_insumo/puma_sdp_maps/puma_concolor_suitability_proj_2014.tif")
 
-anp_buffer_suit <- suit_2014 %>% 
+anp_suit <- suit_2014 %>% 
     raster::crop(mi_anp_shp) %>%            # cortamos el raster a la dimensión del ANP
     raster::mask(mask = mi_anp_shp) 
 
 pal <- colorBin(palette = c("Oranges"), domain = c(1, 0), bins = 6,
     na.color = "transparent", reverse = FALSE)
 
-ext <- raster::extent(mi_anp_buffer_shp)
-
 leaflet(data = mi_anp_shp) %>% 
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
-        opacity = 1.0, fillOpacity = 0) %>% 
+        opacity = 1.0, fillOpacity = 0.2) %>% 
     fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, lat2 = ext@ymax) %>% 
     addProviderTiles(providers$Esri.WorldImagery) %>% 
-    addRasterImage(anp_buffer_suit, color = pal, opacity = 0.8) %>% 
+    addRasterImage(anp_suit, color = pal, opacity = 1) %>% 
     addLegend("bottomright", pal = pal, values = c(0, 1), title = "IH (2014)", 
         opacity = 1)
 
@@ -967,23 +981,24 @@ leaflet(data = mi_anp_shp) %>%
 ```
 
 ```{r}
-p_75 <- quantile(values(anp_buffer_suit), prob = 0.75, na.rm = TRUE)
+p_75 <- quantile(values(anp_suit), prob = 0.75, na.rm = TRUE)
 ```
 
 El mapa de abajo muestra las zonas de mayor idoneidad dentro de la ANP `r mi_anp_print`, 
-los pixeles blancos corresponden al 25% del área de la ANP con mayor valor de 
+los pixeles con color corresponden al 25% del área de la ANP con mayor valor de 
 idoneidad, en este caso la idoneidad en estas regiones es mayor a `r round(p_75, 2)`.
 
 ```{r}
-anp_buffer_75 <- anp_buffer_suit > p_75
-anp_buffer_75[anp_buffer_75 == 0] <- NA
+anp_75 <- anp_suit > p_75
+anp_75[anp_75 == 0] <- NA
 
 leaflet(data = mi_anp_shp) %>% 
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
-        opacity = 1.0, fillOpacity = 0) %>% 
+        opacity = 1.0, fillOpacity = 0.2) %>% 
     fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, lat2 = ext@ymax) %>% 
-    addProviderTiles(providers$Esri.WorldImagery) %>% 
-    addRasterImage(anp_buffer_75, color = "#8c2d04", opacity = 0.8)
+    addProviderTiles(providers$OpenStreetMap) %>% 
+    # addProviderTiles(providers$CartoDB.PositronNoLabels) %>% 
+    addRasterImage(anp_75, color = "#8c2d04", opacity = 1)
 ```
 
 La siguiente gráfica nos muestra la distribución de la idoneidad a lo largo de 
@@ -1218,3 +1233,16 @@ Hansen, M. C., P. V. Potapov, R. Moore, M. Hancher, S. A. Turubanova, A. Tyukavi
 Bryan C. Pijanowski, Luis J. Villanueva-Rivera, Sarah L. Dumyahn, Almo Farina, Bernie L. Krause, Brian M. Napoletano, Stuart H. Gage and Nadia Pieretti, Soundscape Ecology: The Science of Sound in the Landscape, BioScience, Vol. 61, No. 3 (March 2011), pp. 203-216, University of California Press on behalf of the American Institute of Biological Sciences
 
 Landsat imagery, NASA Land Processes Distributed Active Archive Center (LP DAAC) Products,These data are distributed by the Land Processes Distributed Active Archive Center (LP DAAC), located at USGS/EROS, Sioux Falls, SD. http://lpdaac.usgs.gov
+
+Angilletta, M. J. (2009) Thermal adaptation: a theoretical and empirical synthesis. Oxford Univ. Press.
+
+Birch, L. C. (1953) Experimental background to the study of the distribution and abundance of insects: III. The relation between innate capacity for increase and survival of different species of beetles living together on the same food. Evolution 7, pp. 136–144.
+
+Hooper, H. L. et al. (2008) The ecological niche of Daphnia magna characterized using population growth rate. Ecology 89, pp. 1015–1022.
+
+Maguire, Jr., B. (1973). Niche Response Structure and the Analytical Potentials of Its Relationship to the Habitat. The American Naturalist. http://doi.org/10.1086/282827
+
+Qiao, H., Peterson, A. T., Campbell, L. P., Soberón, J., Ji, L. and Escobar, L. E. (2016), NicheA: creating virtual species and ecological niches in multivariate environmental scenarios. Ecography, 39, pp. 805–813. doi: 10.1111/ecog.01961
+
+Soberón, J. and Nakamura, M. (2009) Niches and distributional areas: concepts, methods, and assumptions. Proc. Natl Acad. Sci. USA 106, pp. 19644–19650. Tropical and Subtropical Agroecosystems, 16, pp. 183–191
+
