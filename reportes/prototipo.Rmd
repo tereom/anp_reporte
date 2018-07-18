@@ -4,7 +4,7 @@ output:
         css: estilo.css
 params:
     mi_anp:
-        value: Cuatrociénegas
+        value: anp_terrestres_2017_NOMBRE_Bonampak
 ---
 <!-- css -->
 
