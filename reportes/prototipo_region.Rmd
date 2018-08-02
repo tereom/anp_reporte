@@ -133,7 +133,7 @@ anp_region_table %>%
     row_spec(1:nrow(anp_region_table), color = "#79797d")  %>%
     add_header_above(titulo_tab_region)
 ```
-Las ANPs que conforman la región son: `r str_flatten(str_replace_all(mi_region_nombres$anp_nombres, "_", " "), ", ")`. 
+Las áreas naturales protegidas (ANP) que conforman la región son: `r str_flatten(str_replace_all(mi_region_nombres$anp_nombres, "_", " "), ", ")`. 
 La tabla de la derecha nos indica la extensión de cada una.
 
 #### Regiones CONANP
@@ -173,7 +173,7 @@ cada una y la extensión de los anillos que las rodean.
 
 #### Ecorregiones 
 
-La región `r mi_region` comprende las siguientes ecorregiones.
+Las ANP de la región `r mi_region` comprende las siguientes ecorregiones:
 
 ```{r, eval = TRUE, echo = FALSE, message=FALSE}
 
@@ -193,8 +193,14 @@ region_eco_df %>%
     kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
         position = "left", font_size = 11, full_width = FALSE) 
 ```
+#### Anillos
 
-### Cobertura de suelo 
+Adicional a la comparación con otras Regiones CONANP comparamos los distintos indicadores dentro de las ANP los equivalentes alrededor de las mismas, para esto se definieron los anillos como el área de los 25 km circundantes a cada ANP.
+
+Vale la pena notar que el anillo de las ANP puede no corresponder a la misma ecorregión, puede pertenecer a otra ANP cercana o puede variar mucho representar un superficie mayor a la de la propia ANP, sin embargo, consideramos que, teniendo esto en cuenta, es informativo conocer los indicadores en estas zonas. Las cuales representan el grado de presión antropogénica circundante. En el caso de la región `r mi_region` el área total de su anillo resulta en XXXXX hectáreas. La tabla del lado derecho indica la extensión de los anillos para las ANP totales en la region `r mi_region` en comparación con la extensión de los anillos y ANP en las otras regiones CONANP.
+
+
+### Cobertura de suelo
 
 #### Clases de cobertura
 
