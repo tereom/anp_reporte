@@ -193,11 +193,11 @@ region_eco_df %>%
     kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
         position = "left", font_size = 11, full_width = FALSE) 
 ```
-#### Anillos
+#### Anillos, Zonas núcleo y Zonas de Preservación
 
-Adicional a la comparación con otras Regiones CONANP comparamos los distintos indicadores dentro de las ANP los equivalentes alrededor de las mismas, para esto se definieron los anillos como el área de los 25 km circundantes a cada ANP.
+Adicional a la comparación con otras Regiones CONANP comparamos los distintos indicadores dentro de las ANP los equivalentes alrededor de las mismas, para esto se definieron los anillos como el área de los 25 km circundantes a cada ANP, así como en Zonas núcleo y Zonas de preservación si las ANP las presentan.
 
-Vale la pena notar que el anillo de las ANP puede no corresponder a la misma ecorregión, puede pertenecer a otra ANP cercana o puede variar mucho representar un superficie mayor a la de la propia ANP, sin embargo, consideramos que, teniendo esto en cuenta, es informativo conocer los indicadores en estas zonas. Las cuales representan el grado de presión antropogénica circundante. En el caso de la región `r mi_region` el área total de su anillo resulta en XXXXX hectáreas. La tabla del lado derecho indica la extensión de los anillos para las ANP totales en la region `r mi_region` en comparación con la extensión de los anillos y ANP en las otras regiones CONANP.
+Vale la pena notar que el anillo de las ANP puede no corresponder a la misma ecorregión, puede pertenecer a otra ANP cercana o puede representar un superficie mayor a la de la propia ANP, sin embargo, consideramos que, teniendo esto en cuenta, es informativo conocer los indicadores en esta zona, la cual representa el grado de presión antropogénica circundante. La tabla del lado derecho indica la extensión de los anillos para las ANP totales en la region `r mi_region` en comparación con la extensión de los anillos y ANP en las otras regiones CONANP.
 
 
 ### Cobertura de suelo
@@ -241,12 +241,12 @@ a partir de imágenes Landsat correspondientes al año 2010. Temáticamente se
 agregó para contar con 10 clases:  bosques, selvas, matorrales, pastizal, 
 sin vegetación aparente, humedal, agricultura, asentamiento humano, agua y nieve/hielo.
 
-La tabla de la derecha nos muestra el porcentaje del área de la ANP 
+La tabla de la derecha muestra el porcentaje del área de la ANP 
 *`r mi_region`* 
 que pertence a cada clase de acuerdo al mapa 2010.
 
 #### Tasa de transformación de cobertura boscosa
-Veamos la pérdida decobertura forestal en la región año a año, y para cada tipo
+Veamos la pérdida de cobertura forestal en la región año a año, y para cada tipo
 de cobertura.
 
 <!-- En las gráficas de abajo la línea roja representa la pérdida como porcentaje del 
@@ -255,9 +255,9 @@ anillo y las líneas grises el equivalente en las ANPs de la ecorregión. En la
 gráfica del lado izquierdo podemos leer los resultados a total mientras 
 que los paneles del lado derecho cada cobertura de uso de suelo. -->
 
-En las gráficas de abajo la línea roja representa la transformación de cobertura boscosa en la región `r mi_region`, 
+En las gráficas de abajo la línea roja representa la transformación de cobertura boscosa en las ANP de la región `r mi_region`, 
 la línea azul representa la misma transformación en el anillo circundante
-y las líneas grises el equivalente en las otras regiones CONANP. En la 
+y las líneas grises la transformación en las ANP de las otras regiones CONANP. En la 
 gráfica del lado izquierdo podemos leer los resultados a total mientras 
 que los paneles del lado derecho muestran la transformación para cada cobertura
 de uso de suelo. Al situar el cursor sobre la gráfica se informa también la
@@ -538,14 +538,14 @@ tab_def_eco %>%
 ```
 Adicionalmente, medimos la pérdida como el porcentaje del área total de cada
 ANP perdida por deforestación en los últimos 5 años de datos, en este caso entre 2011 y 2016.
-La tabla de la derecha muestra el promedio de la deforestación de las ANPs de
+La tabla de la derecha muestra el promedio de la deforestación de las ANP de
 cada ecorregión, en rosa se marcan aquellas ecorregiones presentes en la región  *`r mi_region `*.
 
 Una vez que calculamos el promedio de pérdida en cada ecorregión construimos
 el índice como la diferencia entre la pérdida de cada ANP y la pérdida promedio
 en la ecorregión a la que pertenece, es así que si una ANP ocurrió más 
 pérdida boscosa que en el promedio de su ecorregión, el índice tomará un valor 
-positivo. La gráfica de abajo indica el valor de los índices para todas las ANPs
+positivo. La gráfica de abajo indica el valor de los índices para todas las ANP
 de la región *`r mi_region`*.
 
 <div style="clear:both">
@@ -574,10 +574,7 @@ ggplot(indice_deforestacion_cl,
 
 #### Integridad ecosistémica
 
-La integridad ecosistémica se reporta mediante un índice construído en colaboración
-de CONABIO e INECOL. Este índice relaciona de manera integral varios aespectos 
-de la biodiversidad a través de modelos llamados redes bayesianas. Estos modelos
-representan complejas relaciones intercruzadas entre variables descriptoras de los ecosistemas como lo son el tamaño y la cantidad de árboles presentes, y variables contextuales como lo son el clima y la topografía. Con base en esto, los modelos arrojan un predicción sobre el estado actual de los ecosistemas a lo largo del territorio nacional.
+La integridad ecosistémica se reporta mediante un índice construído por la CONABIO en colaboración con el INECOL, A.C.. Este índice relaciona de manera integral varios aespectos de la biodiversidad a través de modelos llamados redes bayesianas. Estos modelos representan relaciones intercruzadas entre variables descriptoras de los ecosistemas como lo son el tamaño y la cantidad de árboles presentes, imagenes satelitales y variables contextuales como lo son el clima y la topografía. Con base en esto, los modelos arrojan un predicción sobre el estado actual de los ecosistemas a lo largo del territorio nacional.
 
 Para este reporte se trabajó con el mapa de integridad ecosistémica de 2014, 
 con una resolución de 250 m^2^, el índice de integridad está estandarizado de 
@@ -672,9 +669,9 @@ variación en la integridad tomamos para cada ANP una muestra aleatoria de 1000
 pixeles y construimos diagramas de los valores de integridad de los pixeles en 
 la muestra. 
 
-- La **mediana** de la integridad de las ANPs está representada por las líneas 
+- La **mediana** de la integridad de las ANP está representada por las líneas 
 que dividen las cajas, si queremos pensar en un único valor para caracterizar la 
-integridad de una ANP podemos usar la mediana, con esto en mente las ANPs con mayor 
+integridad de una ANP podemos usar la mediana, con esto en mente las ANP con mayor 
 integridad ecosistémica son las primeras y conforme descendemos en la gráfica
 disminuye la integridad.
 
@@ -697,37 +694,15 @@ grises corresponden a los pixeles que caen fuera del rango central.
 
 La idoneidad de hábitat se refiere a las condiciones locales de preferencia del 
 *Puma concolor*. Se utilizan registros georreferidos del SNMB obtenidos a partir 
-de fototrampeo, huellas, excretas, registros fotográficos y grabadoras, del 
-SNIB (Sistema Nacional de Información de la Biodiversidad) base de datos de 
-CONABIO, y de la plataforma de Naturalista.
+de fototrampeo, huellas, excretas, registros fotográficos, del 
+SNIB (Sistema Nacional de Información de la Biodiversidad, COBANIO) y los registros 
+de la plataforma de Naturalista en vida libre.
 
 El año del registro es importante para asociarlo con la condición del sitio en 
 el año que fue observado o capturado. Todos los registros de la especie de 
 interés se relacionan espacio-temporalmente con las coberturas de hábitat como, 
 la estructura de la vegetación (INFyS) y las obtenidas de imágenes por 
-percepción remota (Land Sat). Así son asociadas al año correspondiente a los 
-registros.
-
-Vale la pena mencionar que se obtienen previamente coberturas ambientales 
-anuales por lo que aunque todos los registros del periodo completo (2004 al 
-2014 en este caso) ayudan por un lado a caracterizar el nicho ecológico con la 
-mayor información disponible de la especie, por otro lado es así factible, 
-reproyectar dichas condiciones al espacio geográfico anualmente. 
-
-Dentro del modelo desarrollado se seleccionan las variables ambientales que 
-muestran mejor desempeño en los modelos y que además están menos correlacionadas 
-entre ellas. Así es como todas las combinaciones de las variables de hábitat se 
-modelan con base en un elipsoide de tres dimensiones. Se crea la caracterización 
-del nicho ambiental del hábitat de cada especie. 
-
-La razón de usar los elipsoides como aproximación geométrica del nicho ecológico 
-se sustenta en los trabajos teóricos y experimentales que proponen que la forma 
-de los nichos es convexa y que se asemeja a un elipsoide (Birch, 1953; Maguire, 
-1967; Hooper et al, 2008; Angilletta, 2009; Soberón & Nakamura, 2009; Soberón & 
-Peterson, 2011; Qiao et al, 2016). Así el centro del elipsoide es una 
-aproximación de las mejores condiciones por lo que representan las regiones con 
-la mejor calidad o idoneidad de hábitat en este caso del Puma.
-
+percepción remota (Land Sat). 
 
 La siguiente gráfica nos muestra la distribución de la idoneidad a lo largo de 
 los años 2005 a 2014. Los puntos azules corresponden a la idoneidad en el 
@@ -781,6 +756,26 @@ Percentil 75 de idoneidad en la ANP y el anillo que la rodea. La línea roja
 corresponde a la ANP y la 
 línea azúl al anillo.
 -->
+
+Las coberturas ambientales se obtienen anualmente por lo que aunque todos
+los registros del *Puma concolor* del periodo completo (2004 al 2014 en este caso) 
+ayudan a caracterizar el nicho ecológico con la mayor información disponible de la especie, 
+es factible además reproyectar dichas condiciones al espacio geográfico anualmente (hdm, R package).
+
+Del modelo desarrollado se seleccionan las variables ambientales que 
+muestran mejor desempeño en los modelos y que además están menos correlacionadas 
+entre ellas. Así es como todas las combinaciones de las variables de hábitat se 
+modelan con base en un elipsoide de tres dimensiones. Se crea la caracterización 
+del nicho ambiental del hábitat de cada especie. 
+
+La razón de usar los elipsoides como aproximación geométrica del nicho ecológico 
+se sustenta en los trabajos teóricos y experimentales que proponen que la forma 
+de los nichos es convexa y que se asemeja a un elipsoide (Birch, 1953; Maguire, 
+1967; Hooper et al, 2008; Angilletta, 2009; Soberón & Nakamura, 2009; Soberón & 
+Peterson, 2011; Qiao et al, 2016). Así el centro del elipsoide es una 
+aproximación de las mejores condiciones por lo que representan las regiones con 
+la mejor calidad o idoneidad de hábitat en este caso del Puma.
+
 Los diagramas de caja y brazos del abajo buscan comparar la idoneidad de 
 hábitat para el *Puma concolor* a lo largo de las ANPs que pertenecen a la 
 región CONANP `r mi_region`.
@@ -852,29 +847,28 @@ ie_boxplot
 
 ### Referencias y materiales
 
+Angilletta, M. J. (2009) Thermal adaptation: a theoretical and empirical synthesis. Oxford Univ. Press.
+
+Birch, L. C. (1953) Experimental background to the study of the distribution and abundance of insects: III. The relation between innate capacity for increase and survival of different species of beetles living together on the same food. Evolution 7, pp. 136–144.
+
+Bryan C. Pijanowski, Luis J. Villanueva-Rivera, Sarah L. Dumyahn, Almo Farina, Bernie L. Krause, Brian M. Napoletano, Stuart H. Gage and Nadia Pieretti, Soundscape Ecology: The Science of Sound in the Landscape, BioScience, Vol. 61, No. 3 (March 2011), pp. 203-216, University of California Press on behalf of the American Institute of Biological Sciences
+
+Garcia-Alaniz, N.; Equihua, M.; Pérez-Maqueo O.;Equihua, J.;Pardo F.;Martínez, J.; Villela, S.; Schmidt, M., The Mexican National Biodiversity and Ecosystem Degradation Monitoring System, Current Opinion in Evironmental Sustainability, 2017, 26-27, 62–68.
+
 Gebhardt, S.; Wehrmann, T.; Ruiz, M.A.M.; Maeda, P.; Bishop, J.; Schramm, M.; Kopeinig, R.; Cartus, O.; Kellndorfer, J.; Ressl, R.; Santos, L.A.; Schmidt, M.	MAD-MEX: Automatic Wall-to-Wall Land Cover Monitoring for the Mexican REDD-MRV Program Using All Landsat Data. Remote Sens. 2014, 6, 3923-3943.
 
 Gebhardt, S.; Maeda, P.; Wehrmann, T.; Argumedo, J.; A PROPER LAND COVER AND FOREST TYPE CLASSIFICATION SCHEME FOR
 MEXICO. The International Archives of the Photogrammetry, Remote Sensing and Spatial Information Sciences, Volume XL-7/W3, 2015
 36th International Symposium on Remote Sensing of Environment, 11–15, May 2015, Berlin, Germany.
 
-Garcia-Alaniz, N.; Equihua, M.; Pérez-Maqueo O.;Equihua, J.;Pardo F.;Martínez, J.; Villela, S.; Schmidt, M., The Mexican National Biodiversity and Ecosystem Degradation Monitoring System, Current Opinion in Evironmental Sustainability, 2017, 26-27, 62–68.
-
 Hansen, M. C., P. V. Potapov, R. Moore, M. Hancher, S. A. Turubanova, A. Tyukavina, D. Thau, S. V. Stehman, S. J. Goetz, T. R. Loveland, A. Kommareddy, A. Egorov, L. Chini, C. O. Justice, and J. R. G. Townshend. 2013. “High-Resolution Global Maps of 21st-Century Forest Cover Change.” Science 342 (15 November): 850–53.
 
-Bryan C. Pijanowski, Luis J. Villanueva-Rivera, Sarah L. Dumyahn, Almo Farina, Bernie L. Krause, Brian M. Napoletano, Stuart H. Gage and Nadia Pieretti, Soundscape Ecology: The Science of Sound in the Landscape, BioScience, Vol. 61, No. 3 (March 2011), pp. 203-216, University of California Press on behalf of the American Institute of Biological Sciences
+Hooper, H. L. et al. (2008) The ecological niche of Daphnia magna characterized using population growth rate. Ecology 89, pp. 1015–1022.
 
 Landsat imagery, NASA Land Processes Distributed Active Archive Center (LP DAAC) Products,These data are distributed by the Land Processes Distributed Active Archive Center (LP DAAC), located at USGS/EROS, Sioux Falls, SD. http://lpdaac.usgs.gov
-
-Angilletta, M. J. (2009) Thermal adaptation: a theoretical and empirical synthesis. Oxford Univ. Press.
-
-Birch, L. C. (1953) Experimental background to the study of the distribution and abundance of insects: III. The relation between innate capacity for increase and survival of different species of beetles living together on the same food. Evolution 7, pp. 136–144.
-
-Hooper, H. L. et al. (2008) The ecological niche of Daphnia magna characterized using population growth rate. Ecology 89, pp. 1015–1022.
 
 Maguire, Jr., B. (1973). Niche Response Structure and the Analytical Potentials of Its Relationship to the Habitat. The American Naturalist. http://doi.org/10.1086/282827
 
 Qiao, H., Peterson, A. T., Campbell, L. P., Soberón, J., Ji, L. and Escobar, L. E. (2016), NicheA: creating virtual species and ecological niches in multivariate environmental scenarios. Ecography, 39, pp. 805–813. doi: 10.1111/ecog.01961
 
 Soberón, J. and Nakamura, M. (2009) Niches and distributional areas: concepts, methods, and assumptions. Proc. Natl Acad. Sci. USA 106, pp. 19644–19650. Tropical and Subtropical Agroecosystems, 16, pp. 183–191
-
