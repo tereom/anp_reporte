@@ -1,131 +1,108 @@
 ### correr en LUSTRE
 library(raster)
 library(rslurm)
-library(rgdal)
-library(sp)
-library(rgeos)
 library(dplyr)
 library(stringr)
 library(purrr)
 library(maptools)
+library(sf)
 
-# para correr en LUSTRE ponemos directorio de trabajo
-setwd("/LUSTRE/sacmod/reportes_anp/procesar_ecorregion")
+# usaremos clasificación en 7 ecorregiones
+ecorregiones <- st_read("datos_insumo/ecorregiones/ecort08gw.shp", 
+    stringsAsFactors = FALSE)
+ecorregiones_7 <- ecorregiones %>% 
+    group_by(DESECON1) %>% 
+    summarise(CVEECON1 = first(CVEECON1))
+# proyectar para calcular área
+ecorregiones_lcc <- st_transform(ecorregiones_7, 6362)
 
-# lista de archivos shapes
-# path_anps_shp <- "/LUSTRE/MADMEX/eodata/footprints/anp/anp_sinBuffer"
+# calcular área intersectando con ecorregiones y agregar info de área que esta 
+# en shape: S_TERRES y SUPERFICIE
 
-path_anps_shp <- "../datos_insumo/shapes_anp/anp_sinBuffer"
-# para anillos
-# path_anps_shp <- "../datos_insumo/shapes_anp/anp_rings"
-
-anps_shp <- list.files(path_anps_shp, 
-    pattern = ".shp", recursive = FALSE) %>% 
-    tools::file_path_sans_ext()
-
-# necesitamos proyectar a R^2 para calcular área
-proj_lcc <- "+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0 +datum=WGS84 +units=m
-+no_defs +ellps=WGS84 +towgs84=0,0,0"
-
-# para hacer más fácil el cálculo creamos un nuevo shape que contenga únicamente
-# la clasificación en 7 ecorregiones
-
-ecorregiones <- readOGR("../datos_insumo/ecorregiones/", "ecort08gw")
-ecorregiones_7_sp <- unionSpatialPolygons(ecorregiones, ecorregiones$DESECON1)
-ecorregiones_7_df <- distinct(data.frame(eco = ecorregiones$DESECON1))
-rownames(ecorregiones_7_df) <- ecorregiones_7_df[, 1]
-ecorregiones_7 <- SpatialPolygonsDataFrame(ecorregiones_7_sp, data = ecorregiones_7_df)
-ecorregiones_7 <- spTransform(ecorregiones_7, proj_lcc)
-
-calcular_ecorregion <- function(anp_shp, path_anps_shp){
-    anp <- readOGR(path_anps_shp, anp_shp, verbose = FALSE)
-    anp <- spTransform(anp, crs(ecorregiones_7))
-    anp_eco <- raster::intersect(gBuffer(ecorregiones_7, byid=TRUE, width=0), 
-        gBuffer(anp, byid=TRUE, width=0))
-    # para calcular área en m2 reproyectamos a lcc
-    anp_eco@data$area <- gArea(anp_eco, byid = TRUE)
-    anp_eco_df <- anp_eco@data %>% 
-        dplyr::group_by(eco) %>% 
-        dplyr::summarise(hectareas = sum(area) / 10000) %>% 
-        dplyr::mutate(anp = anp_shp, eco = as.character(eco)) 
-    anp_eco_df
+calcular_ecorregion_anp <- function(anp_shp){
+    print(anp_shp)
+    anp <- st_read(anp_shp, stringsAsFactors = FALSE) %>% distinct() 
+    if (str_detect(anp_shp, "Islas_del_Pacifico_de_la_Peninsula_de_Baja")) {
+        anp <- anp[1, ]
+    }
+    anp_lcc <- st_transform(anp, 6362)
+    anp_eco <- st_intersection(anp_lcc, ecorregiones_lcc)
+    anp_eco$area_r <- st_area(anp_eco)
+    anp_eco_df <- anp_eco %>% 
+        as_data_frame() %>% 
+        group_by(DESECON1, ID_07, NOMBRE) %>% 
+        summarise(SUPERFICIE = mean(SUPERFICIE), S_TERRES = mean(S_TERRES), 
+            hectareas = as.numeric(sum(area_r) / 10000)) %>% 
+        mutate(anp = tools::file_path_sans_ext(basename(anp_shp))) 
+    return(anp_eco_df)
 }
 
-# SLURM
-# data frame para iterar
-params_df <- dplyr::data_frame(anp_shp = anps_shp, path_anps_shp = path_anps_shp)
-sjob <- slurm_apply(calcular_ecorregion, params = params_df, jobname = "ecorregion_area_job", 
-    nodes = 5, cpus_per_node = 2, slurm_options = list(partition = "optimus", 
-        nodes = "5", ntasks = "5"), add_objects = "ecorregiones_7")
-print_job_status(sjob)
-
-# sin SLURM
-# anp_eco_list <- purrr::map(anps_shp, ~calcular_ecorregion(., path_anps_shp))
-
-### Read results
-library(dplyr)
-library(purrr)
-
-setwd("/LUSTRE/sacmod/reportes_anp/procesar_ecorregion/_rslurm_ecorregion_area_job")
-
-anp_eco_list <- list.files(".", "results", 
-    full.names = TRUE) %>% 
-    map(readRDS) %>% 
-    flatten() 
-
-anp_eco_df <- bind_rows(anp_eco_list) 
-save(anp_eco_df, file = "../../datos_procesados/2017-10-20_ecorregion.RData")
-
-# anillos
-anp_rings_eco_df <- bind_rows(anp_eco_list) 
-save(anp_rings_eco_df, file = "../datos_procesados/2017-10-20_ecorregion_rings.RData")
-
-
-##############################################################################
-# crear tabla región CONANP
-##############################################################################
-setwd("/LUSTRE/sacmod/reportes_anp")
-
-calcular_region <- function(anp_shp, path_anps_shp){
-    anp <- readOGR(path_anps_shp, anp_shp, verbose = FALSE)
-    distinct(data_frame(region = as.character(anp$REGION), anp = anp_shp))
-}
-
-# lista de archivos shapes
-# path_anps_shp <- "/LUSTRE/MADMEX/eodata/footprints/anp/anp_sinBuffer"
-
+# enlistamos archivos de ANPs
 path_anps_shp <- "datos_insumo/shapes_anp/anp_sinBuffer"
-anps_shp <- list.files(path_anps_shp, 
-    pattern = ".shp", recursive = FALSE) %>% 
-    tools::file_path_sans_ext()
+anps_shp <- list.files(path_anps_shp, pattern = ".shp", recursive = FALSE, 
+    full.names = TRUE)
+# calculamos áreas para cada ANP
+anps_eco_area <- map(anps_shp, calcular_ecorregion_anp)
+anp_eco_df <- bind_rows(!!!anps_eco_area) %>% 
+    rename(eco = DESECON1, id_07 = ID_07)
 
-anp_region <- purrr::map_df(anps_shp, ~calcular_region(., path_anps_shp))
+# save(anp_eco_df, file = "datos_procesados/2018-08-08_ecorregion.RData")
 
-# anp's que pertenecen a más de una región CONANP
-anp_region %>% 
-    filter(stringr::str_detect(region, ";")) %>% 
-    pull(anp)
+# en el caso de anillos, zonas núcleo y zonas de preservación no tenemos 
+# información de área en el shape y no nos interesa la ecorregión en que caen
+# por lo que usamos una función más sencilla
+calcular_area <- function(anp_shp){
+    print(anp_shp)
+    anp <- st_read(anp_shp, stringsAsFactors = FALSE) %>% distinct() 
+    anp_lcc <- st_transform(anp, 6362)
+    anp_lcc$area_r <- st_area(anp_lcc)
+    anp_area <- anp_lcc %>% 
+        as_data_frame() %>% 
+        mutate(
+            anp = tools::file_path_sans_ext(basename(anp_shp)), 
+            hectareas = as.numeric(sum(area_r) / 10000)
+            ) %>% 
+        select(id_07 = ID_07, anp, hectareas)
+    return(anp_area)
+}
 
-# eliminando los que pertenecen a más de una región
-anp_region_cl <- anp_region %>% 
-    mutate(
-        region = str_replace(region, "Dirección Regional ", "") # , 
-        # anp = str_replace(anp, "anp_terrestres_2017_NOMBRE_", "") 
-    ) %>% 
-    filter(!(stringr::str_detect(region, ";")))
+# lista de archivos shapes
+path_anps_shp <- "datos_insumo/shapes_anp/anp_rings"
+path_anps_shp <- "datos_insumo/shapes_anp/anp_zonasnucleo"
+path_anps_shp <- "datos_insumo/shapes_anp/anp_zonaspreservacion/"
 
-save(anp_region_cl, file = "../datos_procesados/2017-10-23_anp_region.RData")
+anps_shp <- list.files(path_anps_shp, pattern = ".shp", recursive = FALSE, 
+    full.names = TRUE)
+anps_area <- map(anps_shp, calcular_area)
+anps_area_anillos <- bind_rows(!!!anps_area)
+anps_area_zonasnucleo <- bind_rows(!!!anps_area)
 
+# en zonas de preservación falla función calcular_area (en part. el distinct) 
+# para ANP Constitución
 
-# pendiente lo de abajo
-anp_region_cl_reps <- data_frame(
-    region = c("Noreste y Sierra Madre Oriental", "Occidente y Pacífico Centro", 
-        "Península de Baja California y Pacífico Norte", "Noroeste y Alto Golfo de California"), 
-    anp = c("anp_terrestres_2017_NOMBRE_C.A.D.N.R._043_Estado_de_Nayarit", 
-        "anp_terrestres_2017_NOMBRE_C.A.D.N.R._043_Estado_de_Nayarit", 
-        "anp_terrestres_2017_NOMBRE_Islas_del_Golfo_de_California", 
-        "anp_terrestres_2017_NOMBRE_Islas_del_Golfo_de_California"))
+calcular_area_2 <- function(anp_shp){
+    print(anp_shp)
+    anp <- st_read(anp_shp, stringsAsFactors = FALSE)
+    anp_lcc <- st_transform(anp, 6362)
+    anp_lcc$area_r <- st_area(anp_lcc)
+    anp_area <- anp_lcc %>% 
+        as_data_frame() %>% 
+        mutate(
+            anp = tools::file_path_sans_ext(basename(anp_shp)), 
+            hectareas = as.numeric(sum(area_r) / 10000)
+        ) %>% 
+        select(id_07 = ID_07, anp, hectareas)
+    return(anp_area)
+}
+anps_area <- map(anps_shp, calcular_area_2)
+anps_area_zonaspreservacion <- bind_rows(!!!anps_area)
 
-anp_region_cl <- bind_rows(anp_region_cl, anp_region_cl_reps)
+save(anps_area_anillos, file = "datos_procesados/2018-08-08_area_rings.RData")
+save(anps_area_zonasnucleo, 
+    file = "datos_procesados/2018-08-08_area_zonasnucleo.RData")
+save(anps_area_zonaspreservacion, 
+    file = "datos_procesados/2018-08-08_area_zonaspreservacion.RData")
 
-
+# Notas
+# * Las islas no tienen sentido
+# * Hay ANPs con polígonos sobrelapados
