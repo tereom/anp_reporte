@@ -4,7 +4,7 @@ output:
         css: estilo.css
 params:
     mi_anp:
-        value: anp_terrestres_2017_NOMBRE_Calakmul
+        value: anp_terrestres_2017_NOMBRE_Montes_Azules
 ---
 
 <!-- css -->
@@ -26,7 +26,7 @@ library(tidyr)
 library(readr)
 
 knitr::opts_chunk$set(echo = FALSE, fig.align="center", message = FALSE, 
-    warning = FALSE, cache = TRUE)
+    warning = FALSE, cache = FALSE)
 comma <- function(x) format(x, digits = 3, big.mark = ",")
 obtener_anps <- function(mi_anp){
     mi_info <- manejo_ha_anp %>% 
@@ -387,26 +387,6 @@ names(escala_color) <- c("otras", "anillo", "z.núcleo", "z.preservación",
 escala_alpha <- c(0.1, 0.8, 0.8, 0.8, 1)
 names(escala_alpha) <- c("otras", "anillo", "z.núcleo", "z.preservación",  
     mi_anp_corto)
-# 
-# # limpiamos para etiquetas en español
-# perdida_anual_porcentaje_cl <- perdida_anual_porcentaje %>% 
-#     left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
-#     mutate(
-#         anp = ifelse(anp == stringr::str_c(mi_anp, "_ring"), 
-#             str_c(mi_anp_corto, " anillo"), anp_corto),
-#         ) %>% 
-#     select(ANP = anp, año = year_loss, perdida = percent_loss, perdida_ha = ha_loss, clase)
-# 
-# perdida_anual_plot <- ggplot(perdida_anual_porcentaje_cl, aes(x = año, 
-#     y = perdida, group = ANP, label = perdida_ha)) + 
-#     geom_line(aes(color = clase, alpha = clase)) +
-#     scale_alpha_manual(values = escala_alpha) +
-#     scale_color_manual(values = escala_color) +
-#     labs(y = "% área", x = "año", title = "Pérdida anual", color = "", 
-#          alpha = "") +
-#     ylim(0, max(quantile(perdida_anual_porcentaje$percent_loss, 0.8),
-#         max(perdida_anual_porcentaje_mi_anp$percent_loss),
-#         max(perdida_anual_porcentaje_mi_anp_ring$percent_loss)))
 
 perdida_anual_cobertura_porcentaje <- perdida_anps_df %>% 
     group_by(anio_perdida, anp, clase, clase_madmex) %>% 
@@ -496,6 +476,7 @@ tasa_cambio_plot <- ggplot(tasa_cambio_cl, aes(x = año, y = THH, group = ANP,
     scale_x_continuous(breaks = 2015:2017) +
     labs(y = "%", x = "año", title = "THH (%)", color = "", 
          alpha = "") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
     ylim(min(quantile(tasa_cambio_cl$THH, 0.2),
         min(tasa_cambio_mi_anp$THH),
         min(tasa_cambio_mi_anp_ring$THH)), 
@@ -503,7 +484,7 @@ tasa_cambio_plot <- ggplot(tasa_cambio_cl, aes(x = año, y = THH, group = ANP,
             max(tasa_cambio_mi_anp$THH),
             max(tasa_cambio_mi_anp_ring$THH)))
 # que solo aparezca el panel si representa más del 1% del área
-mis_clases_madmex <- madmex_mi_anp_v$clase_madmex[madmex_mi_anp_v$prop > 1]
+# mis_clases_madmex <- madmex_mi_anp_v$clase_madmex[madmex_mi_anp_v$prop > 1]
 tasa_cambio_clase_aux <- perdida_anps_df %>% 
     # filter(clase_madmex %in% c(1:3, 6), clase_madmex %in% mis_clases_madmex) %>% 
     filter(clase_madmex %in% c(1:3, 6)) %>% 
@@ -512,7 +493,7 @@ tasa_cambio_clase_aux <- perdida_anps_df %>%
         area_total = sum(n)
     )
 
-tasa_cambio_clase_aux$n[tasa_cambio_clase_aux$year_loss == 2000] <- 0
+tasa_cambio_clase_aux$n[tasa_cambio_clase_aux$anio_perdida == 2000] <- 0
 
 tasa_cambio_clase <- tasa_cambio_clase_aux %>% 
     group_by(anp, clase, clase_madmex) %>% 
@@ -549,6 +530,7 @@ tasa_cambio_clase_plot <- ggplot(tasa_cambio_clase_cl, aes(x = año,
     scale_alpha_manual(values = escala_alpha) +
     scale_color_manual(values = escala_color) +
     scale_x_continuous(breaks = 2015:2017) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
     labs(y = "%", x = "año", title = "THH (%)", color = "", 
          alpha = "") +
     facet_wrap(~clase_madmex) 
@@ -558,8 +540,12 @@ p1 <- ggplotly(tasa_cambio_plot, tooltip = vars_tooltip,
                  dynamicTicks = TRUE)
 p2 <- ggplotly(tasa_cambio_clase_plot, tooltip = vars_tooltip, 
                  dynamicTicks = TRUE)
+```
+
+```{r plot_tth}
 subplot(style(p1, traces = 1:5, showlegend = FALSE), p2, margin = 0.03)
 ```
+
 
 Con el fin de comparar el grado de pérdida boscosa entre las ANPs de una misma 
 región CONANP construímos un índice de pérdida forestal, el índice considera la
@@ -576,8 +562,7 @@ indice_deforestacion <- madmex_cobertura %>%
     summarise(deforestacion = sum(n) / first(hectareas) * 100) %>% 
     ungroup() %>% 
     filter(ultimos_5) %>% 
-    left_join(anp_eco_df, by = "anp") %>% 
-    select(-ultimos_5, -hectareas) %>% 
+    left_join(select(manejo_ha_anp, anp, eco), by = "anp") %>% 
     group_by(eco) %>% 
     mutate(
         deforestacion_eco = mean(deforestacion),
@@ -615,7 +600,7 @@ el índice como la diferencia entre la pérdida de cada ANP y la pérdida promed
 en la ecorregión a la que pertenece, es así que si una ANP ocurrió más 
 pérdida boscosa que en el promedio de su ecorregión, el índice tomará un valor 
 positivo. La gráfica de abajo indica el valor de los índices para todas las ANPs
-de la región *`r mis_region`*.
+de la región *`r mi_region`*.
 
 <div style="clear:both">
 </div>
@@ -686,7 +671,9 @@ pal <- colorQuantile(palette = c("RdYlGn"), domain = NULL, n = 6,
 # pal <- colorNumeric(
 #   palette = "RdYlGn",
 #   domain = c(0, 1), na.color = "transparent")
+```
 
+```{r plot_integridad}
 leaflet(data = mi_anp_shp) %>%
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
         opacity = 1.0, fillOpacity = 0.2) %>%
@@ -697,31 +684,11 @@ leaflet(data = mi_anp_shp) %>%
         addLegend("bottomright", pal = pal, values = c(0, 1),
             title = "IE (2014)", opacity = 1)
 ```
+
+
 </br>
 
-```{r stats_ie}
-load("../datos_procesados/2017-10-12_ie_list.RData")
-
-ie_stats <- map_df(ie_list, ~data_frame(anp = .$anp, media = .$media, 
-    mediana = .$mediana, desv.est = .$desv.est)) %>% 
-    mutate(
-        anp = str_replace(anp, "anp_terrestres_2017_NOMBRE_", ""), 
-        anp_corto = str_sub(anp, start = 1, end = 20)
-    )
-
-mi_anp_ie_stats <- filter(ie_stats, anp == mi_anp)
-```
-
-El mapa de arriba nos da un panorama de la integridad en la ANP *`r mi_anp_print`*, que
-tiene una media de integridad de `r round(mi_anp_ie_stats$media, 2)` y una desviación estándar
-de `r round(mi_anp_ie_stats$desv.est, 2)`. La gráfica de abajo busca contextualizar estos 
-números comparando los valores integridad de *`r mi_anp_print`* con los correspondientes a otras
-ANPs en la misma ecorregión y con los valores en los anillos.
-
-
-<div style= "float:left;position: relative; top: -10px;">
-
-```{r ie_boxplot, fig.width = 4.5, fig.height=6}
+```{r}
 ie_stats <- read_csv("../datos_procesados/2018-07-27_ie_stats.csv")
 ie_samples <- read_csv("../datos_procesados/2018-07-27_ie_list_valores_anp.csv")
 # ie_samples <- map_df(ie_list, ~data_frame(anp = .$anp, ie_pixeles = .$valores)) %>% 
@@ -738,24 +705,6 @@ mis_ie_samples <- ie_samples %>%
     mutate(
         clase = case_when(anp == mi_anp ~ mi_anp_corto, TRUE ~ "otras")
         ) 
-
-ie_samples_median <- ie_samples %>% 
-    group_by(anp_corto) %>% 
-    summarise(mediana_muestras = median(ie_pixeles))
-
-ie_stats <- map_df(ie_anillos_list, ~ data_frame(anp = .$anp, media = .$media,
-    mediana = .$mediana, desv.est = .$desv.est)) %>%     
-    mutate(
-        anp = str_replace(str_replace(anp, "anp_terrestres_2017_NOMBRE_", ""),
-            "_ring", "")
-        ) %>% 
-    left_join(anp_nombres, by = "anp") %>% 
-    select(anp, anp_corto, mediana_anillo = mediana, media_anillo = media, 
-        desv.est_anillo = desv.est) %>% 
-    filter(anp_corto %in% unique(ie_samples$anp_corto)) %>% 
-    left_join(ie_samples_median, by = c("anp_corto"))
-
-
 mis_ie_stats <- ie_stats %>% 
     filter(anp %in% mis_anps_eco, tipo_id != 1)  %>% 
     left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
@@ -766,6 +715,22 @@ mis_ie_stats <- ie_stats %>%
                 tipo_id == 4 ~ "z.preservación"
             ) 
         )
+
+mi_anp_ie_stats <- ie_stats %>% 
+    filter(anp == mi_anp, tipo_id == 1)
+```
+
+
+El mapa de arriba nos da un panorama de la integridad en la ANP *`r mi_anp_print`*, que
+tiene una media de integridad de `r round(mi_anp_ie_stats$media, 2)` y una desviación estándar
+de `r round(mi_anp_ie_stats$desv_est, 2)`. La gráfica de abajo busca contextualizar estos 
+números comparando los valores integridad de *`r mi_anp_print`* con los correspondientes a otras
+ANPs en la misma ecorregión y con los valores en los anillos.
+
+
+<div style= "float:left;position: relative; top: -10px;">
+
+```{r ie_boxplot, fig.width = 4.5, fig.height=6}
     
 ie_boxplot <- ggplot() +
     coord_flip() +
@@ -1011,7 +976,7 @@ línea azúl al anillo.
 
 Los diagramas de caja y brazos del abajo buscan comparar la idoneidad de 
 hábitat para el *Puma concolor* a lo largo de las ANPs que pertenecen a la región 
-CONANP `r mis_region`.
+CONANP `r mi_region`.
 
 ```{r ih_boxplot_2, fig.width = 4.5, fig.height=6}
 ih_stats_2014 <- suit_stats %>% 
@@ -1034,18 +999,6 @@ tabla_suit_region <- tabla_suit %>%
     mutate(
         clase = ifelse(anp_sin_acentos == mi_anp, mi_anp_corto, "otras")
     ) 
-
-tabla_suit_rings_median <- tabla_suit_rings %>% 
-    mutate(anp_sin_acentos = stringr::str_replace(anp, "_ring", "")) %>% 
-    select(anp_sin_acentos, suit = anio_2014) %>% 
-    left_join(anp_nombres) %>% 
-    mutate(
-        clase = ifelse(anp_sin_acentos == mi_anp, mi_anp_corto, "otras")
-    ) %>% 
-    filter(anp_sin_acentos %in% mis_anps_region) %>% 
-    group_by(anp_corto) %>% 
-    summarise(mediana_anillo = median(suit))
-
 
 ie_boxplot <- ggplot() +
     coord_flip() +
