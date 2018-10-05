@@ -12,3 +12,5 @@
 .DS_Store
 /datos_insumo
 /datos_procesados
+credenciales.env
+.env
