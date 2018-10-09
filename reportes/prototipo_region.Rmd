@@ -136,10 +136,9 @@ anp_region_table %>%
 Las áreas naturales protegidas (ANP) que conforman la región son: `r str_flatten(str_replace_all(mi_region_nombres$anp_nombres, "_", " "), ", ")`. 
 La tabla de la derecha nos indica la extensión de cada una.
 
-#### Regiones CONANP
+#### Regiones de la CONANP
 
-A lo largo del reporte agregamos comparativos con las regiones
-CONANP, la tabla de abajo indica cuantas hectáreas hay en las ANPs correspondientes a cada región y el número de ANPs de cada una.
+A lo largo del reporte agregamos comparativos con las regiones CONANP, la tabla de abajo indica cuantas hectáreas hay en las ANP correspondientes a cada región y el número de ANP de cada una.
 
 
 ```{r}
@@ -162,10 +161,10 @@ anp_region_eco_table %>%
 ```
 Adicional a la comparación con otras regiones comparamos los distintos
 indicadores dentro de la región con los equivalentes en los alrededores de las
-mismas, para esto se definieron los anillos como el área de los 25 km circundantes a cada ANP que conforma la región. 
+mismas, para esto se definió a la periferia como el área de los 25 km circundantes a cada ANP que conforma la región. 
 
-La tabla de la derecha indica las ANPs de la región, las hectáreas que comprende
-cada una y la extensión de los anillos que las rodean.
+La tabla de la derecha indica las ANP de la región, las hectáreas que comprende
+cada una y la extensión de la periferia que las rodean.
 
 
 <div style="clear:both">
@@ -193,11 +192,11 @@ region_eco_df %>%
     kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
         position = "left", font_size = 11, full_width = FALSE) 
 ```
-#### Anillos, Zonas núcleo y Zonas de Preservación
+#### Periferia, Zonas núcleo y Zonas de Preservación
 
-Adicional a la comparación con otras Regiones CONANP comparamos los distintos indicadores dentro de las ANP los equivalentes alrededor de las mismas, para esto se definieron los anillos como el área de los 25 km circundantes a cada ANP, así como en Zonas núcleo y Zonas de preservación si las ANP las presentan.
+Adicional a la comparación con otras regiones CONANP comparamos los distintos indicadores dentro de las ANP los equivalentes alrededor de las mismas, para esto se definió a la periferia de 25 km circundante a cada ANP, así como en Zonas núcleo y Zonas de preservación si las ANP las presentan.
 
-Vale la pena notar que el anillo de las ANP puede no corresponder a la misma ecorregión, puede pertenecer a otra ANP cercana o puede representar un superficie mayor a la de la propia ANP, sin embargo, consideramos que, teniendo esto en cuenta, es informativo conocer los indicadores en esta zona, la cual representa el grado de presión antropogénica circundante. La tabla del lado derecho indica la extensión de los anillos para las ANP totales en la region `r mi_region` en comparación con la extensión de los anillos y ANP en las otras regiones CONANP.
+Vale la pena notar que la periferia de las ANP puede no corresponder a la misma ecorregión, puede pertenecer a otra ANP cercana o puede representar un superficie mayor a la de la propia ANP, sin embargo, consideramos que, teniendo esto en cuenta, es informativo conocer los indicadores en esta zona, la cual representa el grado de presión antropogénica circundante. La tabla del lado derecho indica la extensión de la periferia de las ANP totales en la region `r mi_region` en comparación con la extensión de la periferia y ANP en las otras regiones CONANP.
 
 
 ### Cobertura de suelo
@@ -245,8 +244,8 @@ La tabla de la derecha muestra el porcentaje del área de la ANP
 *`r mi_region`* 
 que pertence a cada clase de acuerdo al mapa 2010.
 
-#### Tasa de transformación de cobertura boscosa
-Veamos la pérdida de cobertura forestal en la región año a año, y para cada tipo
+#### Tasa de transformación de hábitat
+Veamos la pérdida de cobertura de vegetación en la región año a año, y para cada tipo
 de cobertura.
 
 <!-- En las gráficas de abajo la línea roja representa la pérdida como porcentaje del 
@@ -255,13 +254,13 @@ anillo y las líneas grises el equivalente en las ANPs de la ecorregión. En la
 gráfica del lado izquierdo podemos leer los resultados a total mientras 
 que los paneles del lado derecho cada cobertura de uso de suelo. -->
 
-En las gráficas de abajo la línea roja representa la transformación de cobertura boscosa en las ANP de la región `r mi_region`, 
-la línea azul representa la misma transformación en el anillo circundante
+En las gráficas de abajo la línea roja representa la transformación de hábitat en las ANP de la región `r mi_region`, 
+la línea azul representa la misma transformación en la periferia circundante de las ANP
 y las líneas grises la transformación en las ANP de las otras regiones CONANP. En la 
-gráfica del lado izquierdo podemos leer los resultados a total mientras 
+gráfica del lado izquierdo podemos leer los resultados, mientras 
 que los paneles del lado derecho muestran la transformación para cada cobertura
 de uso de suelo. Al situar el cursor sobre la gráfica se informa también la
-pérdida de cobertura boscosa media en hectáreas.
+pérdida de cobertura de vegetación media en hectáreas.
 
 ```{r deforestacion_tiempo, fig.width = 8, fig.height=4.5}
 load("../datos_procesados/2017-10-22_perdida_cobertura.RData")
@@ -536,7 +535,7 @@ tab_def_eco %>%
     row_spec(which(tab_def_eco$eco %in% mis_eco_region), bold = F, color = "#79797d", 
         background = "mistyrose") 
 ```
-Adicionalmente, medimos la pérdida como el porcentaje del área total de cada
+Adicionalmente, medimos la pérdida de vegetación como el porcentaje del área total de cada
 ANP perdida por deforestación en los últimos 5 años de datos, en este caso entre 2011 y 2016.
 La tabla de la derecha muestra el promedio de la deforestación de las ANP de
 cada ecorregión, en rosa se marcan aquellas ecorregiones presentes en la región  *`r mi_region `*.
@@ -544,7 +543,7 @@ cada ecorregión, en rosa se marcan aquellas ecorregiones presentes en la regió
 Una vez que calculamos el promedio de pérdida en cada ecorregión construimos
 el índice como la diferencia entre la pérdida de cada ANP y la pérdida promedio
 en la ecorregión a la que pertenece, es así que si una ANP ocurrió más 
-pérdida boscosa que en el promedio de su ecorregión, el índice tomará un valor 
+pérdida que en el promedio de su ecorregión, el índice tomará un valor 
 positivo. La gráfica de abajo indica el valor de los índices para todas las ANP
 de la región *`r mi_region`*.
 
@@ -569,14 +568,12 @@ ggplot(indice_deforestacion_cl,
   
 ```
 
+#### Integridad Ecosistémica
 
-### Integridad y ACE
+La integridad ecosistémica (IE) es un índice que relaciona de manera integral varios aspectos de la biodiversidad a través de modelos llamados redes bayesianas. Estos modelos representan relaciones intercruzadas entre variables descriptoras de los ecosistemas como lo son la estructura de la vegetación (altura de los árbooles, densidad de arbolado, el cobertura del dosel, diámetro del tallo, entre otras) mediante información obtenida del Inventario Nacional Forestal y Suelos (INFyS), producción primaria bruta, fotosíntesis neta estimada mediante imágenes satelitales (Landsat y MODIS) y variables contextuales como lo son el clima y la topografía. 
+Dicho índice incorpora en el modelo los diferentes tipos de ecosistemas mediante las Zonas de Vida de Holdridge, de tal forma que considera la diversidad de estructura de vegetación que caracteriza cada ecosistema. Finalmente se relacionan dichas variables con la intensidad de cambios de uso de suelo que ha habido en el territorio nacional en el tiempo (INEGI). Con base en esto, los modelos arrojan un predicción sobre la condición actual de los ecosistemas del país. La IE fue elaborado por la CONABIO en colaboración con el INECOL A.C.en el año 2015.
 
-#### Integridad ecosistémica
-
-La integridad ecosistémica se reporta mediante un índice construído por la CONABIO en colaboración con el INECOL, A.C.. Este índice relaciona de manera integral varios aespectos de la biodiversidad a través de modelos llamados redes bayesianas. Estos modelos representan relaciones intercruzadas entre variables descriptoras de los ecosistemas como lo son el tamaño y la cantidad de árboles presentes, imagenes satelitales y variables contextuales como lo son el clima y la topografía. Con base en esto, los modelos arrojan un predicción sobre el estado actual de los ecosistemas a lo largo del territorio nacional.
-
-Para este reporte se trabajó con el mapa de integridad ecosistémica de 2014, 
+Para este reporte se trabajó con el mapa de IE 2014, 
 con una resolución de 250 m^2^, el índice de integridad está estandarizado de 
 manera que toma valores entre 0 y 1, donde 1 es el mayor valor de integridad. 
 
@@ -675,9 +672,9 @@ integridad de una ANP podemos usar la mediana, con esto en mente las ANP con may
 integridad ecosistémica son las primeras y conforme descendemos en la gráfica
 disminuye la integridad.
 
-- Los puntos **azules** representan la **mediana** de integridad en los anillos de
+- Los puntos **azules** representan la **mediana** de integridad en la periferia de
 cada ANP, esto nos sirve para comparar la integridad de cada ANP con la 
-correspondiente al anillo que la rodea.
+correspondiente a la periferia que la rodea.
 
 - La longitud de las **cajas** es el rango intercuantil, esto es el 50% de los 
 valores centrales de integridad están contenidos en la caja. Y los puntos 
@@ -689,14 +686,23 @@ grises corresponden a los pixeles que caen fuera del rango central.
 </div>
 
 
+### Fauna
 
-### Puma: ideoneidad de hábitat
+Los indicadores faunísticos son complementarios con el índice de integridad y serán integrados al modelo bayesiano. Actualmente se evalúa la sensibilidad de estos indicadores a la degradación, y con el tiempo al integrar mayor cantidad de registros en el SNMB se podrán definir cuales son los mas permitentes.
 
-La idoneidad de hábitat se refiere a las condiciones locales de preferencia del 
+### Depredadores tope de México, idoneidad de hábitat y presas principales
+
+El Jaguar (*Panthera onca*) y el Puma (*Puma concolor*) son los depredadores tope en México por dos principales características ecológicas, sus hábitos estrictamente canívoros y su tamaño corporal. Ambos son los mas pesados entre los carnívoros estrictos en el país los cuales están entre un rango de peso de 30 kg a 158 kg (Burnie y Wilson 2001).
+
+Para monitorear el estado de ambos depredadores se considera evaluar dos parámetros principales la tendencia de la calidad del  hábitat de cada especie de depredador a escala nacional regional y por ANP en las que se distribuyen y evaluar la prevalencia de sus presas principales mediante registros del Sistema Nacional de Monitoreo de la Biodiversidad (SNMB).
+
+### Puma: Idoneidad de hábitat
+
+La idoneidad de hábitat se refiere a las condiciones locales de calidad de hábitat del 
 *Puma concolor*. Se utilizan registros georreferidos del SNMB obtenidos a partir 
 de fototrampeo, huellas, excretas, registros fotográficos, del 
 SNIB (Sistema Nacional de Información de la Biodiversidad, COBANIO) y los registros 
-de la plataforma de Naturalista en vida libre.
+de la plataforma de Naturalista en vida silvestre.
 
 El año del registro es importante para asociarlo con la condición del sitio en 
 el año que fue observado o capturado. Todos los registros de la especie de 
@@ -705,8 +711,8 @@ la estructura de la vegetación (INFyS) y las obtenidas de imágenes por
 percepción remota (Land Sat). 
 
 La siguiente gráfica nos muestra la distribución de la idoneidad a lo largo de 
-los años 2005 a 2014. Los puntos azules corresponden a la idoneidad en el 
-anillo circundante a la región `r mi_region`.
+los años 2008 a 2014. Los puntos azules corresponden a la idoneidad de hábitat en la periferia de las ANP 
+de la región `r mi_region`.
 
 ```{r, fig.width=4, fig.height=3}
 load(file = "../datos_procesados/2018-02-12_suitability.Rdata")
@@ -758,9 +764,9 @@ línea azúl al anillo.
 -->
 
 Las coberturas ambientales se obtienen anualmente por lo que aunque todos
-los registros del *Puma concolor* del periodo completo (2004 al 2014 en este caso) 
+los registros del *Puma concolor* del periodo completo (2008 al 2014 en este caso) 
 ayudan a caracterizar el nicho ecológico con la mayor información disponible de la especie, 
-es factible además reproyectar dichas condiciones al espacio geográfico anualmente (hdm, R package).
+es factible además reproyectar dichas condiciones al espacio geográfico anualmente (https://github.com/luismurao/hsi).
 
 Del modelo desarrollado se seleccionan las variables ambientales que 
 muestran mejor desempeño en los modelos y que además están menos correlacionadas 
@@ -845,6 +851,19 @@ ie_boxplot
 # ggplotly(ie_anp, tooltip = c("label", "x", "y", "size"))
 ```
 
+### Jaguar:Idoneidad de hábitat
+
+(Pendiente modelos HSI para Jaguar)
+
+# Presas principales del Puma y Jaguar
+
+En México ha habido reportes sobre las presas más importantes, es decir aquellas que conforman más del 70 % de la biomasa consumida, entre los que se encuentran los venados (cola blanca y temazates), pecarí de collar y armadillo, algunas presas complementarias son el coatí, el tepezcuintle y los ceretes. En diversas localidades de Chamela-Cuixmala, Jalisco (Núñez *et al*, 2000) San Luis potosí (Rueda *et al*, 2013) y en Calakmul, Campeche (Estrada, 2008), las presas más importantes para el Jaguar son el pecarí de collar, los venados, el armadillo y el coatí. Otra presa un poco menos importantes fue el tepezcuintle. En todos los trabajos presentan que las presas más importantes para el Jaguar son el pecarí de collar, los venados, el armadillo y el coatí. Otra presa un poco menos importantes fue el tepezcuintle.
+
+En cualquier parte, el espectro alimentario del puma o jaguar incluye entre 10 y 20 especies, pero las más importantes incluyen siempre ungulados (pecaríes y venados) y mamíferos medianos (coatí, armadillo y roedores). En ningún lugar las aves representan especies de importancia. Las especies más importantes tanto para el puma como para el jaguar son básicamente las mismas. Entre las especies que pueden considerarse exclusivas del puma estarían el borrego cimarrón y el venado bura; para el caso del jaguar, estaría el pecarí de labios blancos (en algunas localidades costeras los cocodrilos, las tortugas, los peces y las aves acuáticas pueden ser relevantes).
+
+(Gráficas de Presas Principales y Abundancia Relativa por Regiones CONANP)
+
+
 ### Referencias y materiales
 
 Angilletta, M. J. (2009) Thermal adaptation: a theoretical and empirical synthesis. Oxford Univ. Press.
@@ -852,6 +871,12 @@ Angilletta, M. J. (2009) Thermal adaptation: a theoretical and empirical synthes
 Birch, L. C. (1953) Experimental background to the study of the distribution and abundance of insects: III. The relation between innate capacity for increase and survival of different species of beetles living together on the same food. Evolution 7, pp. 136–144.
 
 Bryan C. Pijanowski, Luis J. Villanueva-Rivera, Sarah L. Dumyahn, Almo Farina, Bernie L. Krause, Brian M. Napoletano, Stuart H. Gage and Nadia Pieretti, Soundscape Ecology: The Science of Sound in the Landscape, BioScience, Vol. 61, No. 3 (March 2011), pp. 203-216, University of California Press on behalf of the American Institute of Biological Sciences
+
+David Burnie y Don E. Wilson (2001). Animal: The Definitive Visual Guide to the World's Wildlife.
+
+Chinchilla, F. 1997. La dieta del jaguar, el puma y el manigordo en el Parque Nacional Corcovado, Costa Rica. Revista de Biología Tropical 45 (3): 1223-1229.
+
+Estrada, C.G. 2008. Dieta, uso de hábitat y patrones de actividad del puma y el jaguar en la Selva Maya, Centroamérica. Revista Mexicana de Mastozoología 12: 113-130.
 
 Garcia-Alaniz, N.; Equihua, M.; Pérez-Maqueo O.;Equihua, J.;Pardo F.;Martínez, J.; Villela, S.; Schmidt, M., The Mexican National Biodiversity and Ecosystem Degradation Monitoring System, Current Opinion in Evironmental Sustainability, 2017, 26-27, 62–68.
 
@@ -868,7 +893,12 @@ Hooper, H. L. et al. (2008) The ecological niche of Daphnia magna characterized 
 Landsat imagery, NASA Land Processes Distributed Active Archive Center (LP DAAC) Products,These data are distributed by the Land Processes Distributed Active Archive Center (LP DAAC), located at USGS/EROS, Sioux Falls, SD. http://lpdaac.usgs.gov
 
 Maguire, Jr., B. (1973). Niche Response Structure and the Analytical Potentials of Its Relationship to the Habitat. The American Naturalist. http://doi.org/10.1086/282827
+Núñez, R., B. Miller y F. Lindsey. 2000. Food habita of jaguars and pumas in Jalisco, México.Journal of Zoology London 252: 373-379.
 
 Qiao, H., Peterson, A. T., Campbell, L. P., Soberón, J., Ji, L. and Escobar, L. E. (2016), NicheA: creating virtual species and ecological niches in multivariate environmental scenarios. Ecography, 39, pp. 805–813. doi: 10.1111/ecog.01961
+Rueda, P., G.D. Mendoza, D. Martínez y O.C. Rosas-Rosas. 2013. Determination of the jaguar and puma diet in a tropical forest in San Luis Potosi, Mexico. Journal of Applied Animal Research 41 (4): 484-489.
 
 Soberón, J. and Nakamura, M. (2009) Niches and distributional areas: concepts, methods, and assumptions. Proc. Natl Acad. Sci. USA 106, pp. 19644–19650. Tropical and Subtropical Agroecosystems, 16, pp. 183–191
+
+Weckel, M., W. Giuliano y S. Silver. 2006. Jaguar feeding ecology: distribution of predator and prey through time and space. Journal of Zoology 270: 25-30.
+
