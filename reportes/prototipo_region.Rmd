@@ -160,11 +160,9 @@ anp_region_eco_table %>%
     row_spec(which(anp_region_eco_table$region == mi_region), bold = F, 
         color = "#79797d", background = "mistyrose") 
 ```
-Adicional a la comparación con otras regiones comparamos los distintos
-indicadores dentro de la región con los equivalentes en los alrededores de las
-mismas, para esto se definieron los anillos como el área de los 25 km circundantes a cada ANP que conforma la región. 
+En relación a los distintos indicadores, comparamos los resultantes dentro de cada región con los equivalentes alrededor de las mismas, para esto se definieron los anillos como el área correspondiente a 25 km circundantes a cada ANP. 
 
-La tabla de la derecha indica las ANPs de la región, las hectáreas que comprende
+La tabla de la derecha indica las ANP de la región, las hectáreas que comprende
 cada una y la extensión de los anillos que las rodean.
 
 
@@ -195,9 +193,7 @@ region_eco_df %>%
 ```
 #### Anillos, Zonas núcleo y Zonas de Preservación
 
-Adicional a la comparación con otras Regiones CONANP comparamos los distintos indicadores dentro de las ANP los equivalentes alrededor de las mismas, para esto se definieron los anillos como el área de los 25 km circundantes a cada ANP, así como en Zonas núcleo y Zonas de preservación si las ANP las presentan.
-
-Vale la pena notar que el anillo de las ANP puede no corresponder a la misma ecorregión, puede pertenecer a otra ANP cercana o puede representar un superficie mayor a la de la propia ANP, sin embargo, consideramos que, teniendo esto en cuenta, es informativo conocer los indicadores en esta zona, la cual representa el grado de presión antropogénica circundante. La tabla del lado derecho indica la extensión de los anillos para las ANP totales en la region `r mi_region` en comparación con la extensión de los anillos y ANP en las otras regiones CONANP.
+Adicional a la comparación con otras Regiones CONANP comparamos los distintos indicadores dentro de las ANP los equivalentes alrededor de las mismas, para esto se definieron los anillos como el área de los 25 km circundantes a cada ANP, así como en Zonas núcleo y Zonas de preservación si las ANP las presentan. Vale la pena notar que el anillo de las ANP puede no corresponder a la misma ecorregión, puede pertenecer a otra ANP cercana o puede representar un superficie mayor a la de la propia ANP, sin embargo, consideramos que, teniendo esto en cuenta, es informativo conocer los indicadores en esta zona, la cual representa el grado de presión antropogénica circundante. La tabla del lado derecho indica la extensión de los anillos para las ANP totales en la region `r mi_region` en comparación con la extensión de los anillos y ANP en las otras regiones CONANP.
 
 
 ### Cobertura de suelo
