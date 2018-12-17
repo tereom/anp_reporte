@@ -46,7 +46,7 @@ mi_anp_corto <- mi_anp_nombres$anp_corto
 mi_anp_print <- str_replace_all(mi_anp_nombres$anp, "_", " ")
 ```
 
-## ANP `r mi_anp_print `
+## Área Natural Protegida `r mi_anp_print `
 
 #### Ecorregiones 
 
@@ -104,8 +104,8 @@ titulo_tab <- c(3)
 names(titulo_tab) <- c(mis_eco)
 ```
 
-A lo largo del reporte los indicadores de la ANP objetivo se comparan con los 
-indicadores de otras ANPs de la misma ecorregión, esto se hace para poder contextuaizar 
+A lo largo del reporte los indicadores de la Área Natural Protegida (ANP) objetivo se comparan con los 
+indicadores de otras ANP de la misma ecorregión, esto se hace para poder contextuaizar 
 los valores obtenidos. Utilizamos la definición de ecorregión del mapa 
 de [Ecorregiones terrestres de México (2008)](http://www.conabio.gob.mx/informacion/metadata/gis/ecort08gw.xml?_xsl=/db/metadata/xsl/fgdc_html.xsl&_indent=no) 
 elaborado por INEGI, CONABIO e INE.
@@ -130,7 +130,7 @@ anp_eco_df_table %>%
 
 A cada ANP le asignamos la ecorregión de mayor prevalencia, es decir, si la ANP
 pertenece a más de una ecorregión le asignamos aquella donde esté la mayor 
-parte de su terreno. En el caso de la ANP *`r mi_anp_print`* se le asignó la ecorregión
+parte de su área. En el caso de la ANP *`r mi_anp_print`* se le asignó la ecorregión
 `r mis_eco`, que engloba el `r round(mi_anp_eco$p_area_eco)`% del área total de 
 la ANP. Por tanto, en los siguientes análisis se compararán los 
 indicadores de las ANPs asignadas a la ecorregión `r mis_eco`, 
@@ -146,27 +146,27 @@ anp_eco_table %>%
 
 ```
 
-#### Anillos
+#### Periferia de las Áreas Naturales Protegidas
 
-Adicional a la comparación con otras ANPs comparamos los distintos indicadores 
-dentro de las ANPs con los equivalentes en los alrededores de las mismas, para 
-esto se definieron los anillos como el área de los 25 km circundantes a cada ANP. 
+Adicional a la comparación con otras ANP comparamos los distintos indicadores 
+dentro de las ANP con los equivalentes en los alrededores de las mismas, para 
+esto se definió a la periferia como un área de 25 km circundante a cada ANP. 
 
-Vale la pena notar que el anillo de las ANPs puede no corresponder a la misma 
+Vale la pena notar que el área de la periferia de las ANP puede no corresponder a la misma 
 ecorregión, o puede variar mucho en extensión, sin embargo, consideramos que, 
 teniendo esto en cuenta, es informativo conocer los indicadores en estas regiones.
-En el caso de la ANP *`r mi_anp_print`* el área total de su anillo resulta en 
+En el caso de la ANP *`r mi_anp_print`* el área total de la periferia resulta en 
 `r comma(filter(anp_eco_table, anp == mi_anp)$hectareas_ring)` hectáreas. La 
-última columna de la tabla de arriba indica la extensión de los anillos para 
-las ANPs asignadas a la misma 
+última columna de la tabla de arriba indica la extensión de la periferia para 
+las ANP asignadas a la misma 
 ecorregión que *`r mi_anp_print`*.
 
 
-#### Regiones CONAP
+#### Regiones de la CONANP
 
-Adicional a los análisis de ecorregión agregamos comparativos dentro de las regiones
-CONANP, la tabla de abajo indica cuantas hectáreas hay en las ANPs correspondientes 
-a cada región y el número de ANPs de cada una.
+Adicional a los análisis de ecorregión agregamos comparativos dentro de las regiones 
+CONANP, la tabla de abajo indica cuántas hectáreas hay en las ANP correspondientes 
+a cada región y el número total de ANP de cada una.
 
 ```{r}
 load("../datos_procesados/2017-10-23_anp_region.RData")
@@ -202,7 +202,7 @@ anp_region_eco_table %>%
     kable("latex", align = c("l", "c", "c"), col.names = c("", "ha", "# ANPs")) 
 ```
 
-La tabla de abajo indica las ANPs de la región, las hectáreas que comprende
+La tabla de abajo indica las ANP de la región, las hectáreas que comprende
 cada una y la extensión de los anillos que las rodean.
 
 
@@ -289,8 +289,7 @@ Ahora veamos el impacto de la deforestación año a año, y para cada tipo de
 cobertura.
 
 En las gráficas de abajo la línea roja representa la pérdida como porcentaje del 
-área total del ANP, la línea azúl representa el porcentaje de área perdida en el 
-anillo y las líneas grises el equivalente en las ANPs de la ecorregión. En la 
+área total del ANP, la línea azúl representa el porcentaje de área perdida en la periferia del ANP y las líneas grises el equivalente en las ANP de la ecorregión. En la 
 gráfica del lado izquierdo podemos leer los resultados a total mientras 
 que los paneles del lado derecho cada cobertura de uso de suelo.
 
@@ -396,9 +395,9 @@ gridExtra::grid.arrange(perdida_anual_plot, perdida_anual_cobertura_plot, nrow =
 ```
 
 Con el fin de comparar el grado de pérdida boscosa entre las ANPs de una misma 
-región CONANP construímos un índice de perdida forestal, el índice considera la
+región CONANP construímos un índice de pérdida forestal, el índice considera la
 pérdida por ecorregión. Esto es porque es razonable considerar
-que algunas ecorregiones sean sujetas a mayor amenaza de perdida forestal que otras. 
+que algunas ecorregiones sean sujetas a mayor amenaza de pérdida forestal que otras. 
 
 ```{r}
 load("../datos_procesados/2017-10-22_perdida_cobertura.RData")
@@ -436,7 +435,7 @@ tab_def_eco <- indice_deforestacion %>%
 Adicionalmente, medimos la pérdida como el porcentaje del área total de cada
 ANP perdida por deforestación en los últimos 5 años de datos, en este caso entre 2011 y 2016.
 
-La siguiente tabla muestra el promedio de la deforestación de las ANPs de
+La siguiente tabla muestra el promedio de la deforestación de las ANP de
 cada ecorregión.
 
 ```{r}
@@ -449,7 +448,7 @@ Una vez que calculamos el promedio de pérdida en cada ecorregión construimos
 el índice como la diferencia entre la pérdida de cada ANP y la pérdida promedio
 en la ecorregión a la que pertenece, es así que si una ANP ocurrió más 
 pérdida boscosa que en el promedio de su ecorregión, el índice tomará un valor 
-negativo. La gráfica de abajo indica el valor de los índices para todas las ANPs
+negativo. La gráfica de abajo indica el valor de los índices para todas las ANP
 de la región *`r mis_region`*.
 
 ```{r deforestacion_region_conanp, fig.width = 5, fig.height=4.5}
