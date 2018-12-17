@@ -110,7 +110,7 @@ anp_eco_table %>%
     left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
     select(anp_corto, cat_manejo, ha, ha_anillo) %>% 
     kable("html", align = c("r", "c", "c", "c"), padding = 10, 
-        col.names = c("", "cat", "ha", "ha anillo")) %>%
+        col.names = c("", "cat", "ANP ha", "Periferia ha")) %>%
     kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
         position = "float_right", font_size = 11, full_width = FALSE) %>% 
     row_spec(which(anp_eco_table$anp == mi_anp), bold = F, color = "#79797d", 
@@ -198,7 +198,7 @@ names(titulo_tab_region) <- mi_region
 anp_region_table %>% 
     dplyr::select(anp_corto, cat_manejo, hectareas, hectareas_ring) %>%
     kable("html", align = c("r", "c", "c", "c"), padding = 10, 
-        col.names = c("", "cat", "ha", "ha anillo")) %>%
+        col.names = c("", "cat", "ANP ha", "Periferia ha")) %>%
     kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
         position = "float_right", font_size = 11, full_width = FALSE) %>% 
     row_spec(which(anp_region_table$anp == mi_anp), bold = F, color = "#79797d", 
@@ -304,12 +304,25 @@ leaflet(data = mi_anp_shp) %>%
         fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, 
             lat2 = ext@ymax) %>% 
         addProviderTiles(providers$Esri.WorldImagery) %>% 
-        addRasterImage(madmex_mi_anp, color = pal, opacity = 0.6, 
-            maxBytes = 8 * 1024 * 1024, project = FALSE) %>% 
-        addLegend("bottomright", values = 1:10, colors = colores_madmex,
-            title = "MAD-MEX (2010)", labels = c("bosques", "selvas", "matorrales", 
-                "pastizal", "sin vegetación aparente", "humedal", "agricultura", 
-                "asentamiento humano", "agua", "nieve y hielo"), opacity = 0.6)
+        addWMSTiles("http://www.conabio.gob.mx/informacion/explorer/wms?Format=image/png&request=GetMap&version=1.1.1",
+            layers = "spt1mgw", group = "GAP", 
+            options = WMSTileOptions(format = "image/png", transparent = TRUE)) 
+        # addWMSTiles(
+        # "http://webportal.conabio.gob.mx:8085/geoserver/MEX_IE3C_250m/wms?",
+        #     layers = "MEX_IE3C_250m:ie3c_2014_250m",
+        #     options = WMSTileOptions(format = "image/png", transparent = TRUE)
+        # ) %>% 
+        # addLegend("bottomright", values = 1:10, colors = colores_madmex,
+        #     title = "MAD-MEX (2010)", labels = c("bosques", "selvas", "matorrales", 
+        #         "pastizal", "sin vegetación aparente", "humedal", "agricultura", 
+        #         "asentamiento humano", "agua", "nieve y hielo"), opacity = 0.6) %>% 
+        # addLayersControl(
+        #     overlayGroups = c("GAP"),
+        #     options = layersControlOptions(collapsed = FALSE)
+        # )  %>% 
+        #   addWMSLegend(uri = "http://webportal.conabio.gob.mx:8085/geoserver/web/?wicket:bookmarkablePage=:org.geoserver.wms", position = "topleft", layerId = "legend") %>%
+        # hideGroup("GAP")
+
 ```
 
 
@@ -366,7 +379,7 @@ perdida_anps_df <- madmex_cobertura %>%
         (anp == mi_anp & tipo_id == 4)) %>% 
     mutate(
         clase = case_when(
-            tipo_id == 2 ~ "anillo",
+            tipo_id == 2 ~ "periferia",
             tipo_id == 3 ~ "z.núcleo",
             tipo_id == 4 ~ "z.preservación",
             anp == mi_anp ~ mi_anp_corto,
@@ -382,10 +395,10 @@ perdida_anual_porcentaje <- perdida_anps_df %>%
         ha_loss = n * 3 * 3 / 100) %>% 
     ungroup()
 escala_color <- c("gray50", "#005b96", "#7CCD7C", "#AB82FF", "#ff420e")
-names(escala_color) <- c("otras", "anillo", "z.núcleo", "z.preservación",  
+names(escala_color) <- c("otras", "periferia", "z.núcleo", "z.preservación",  
     mi_anp_corto)
 escala_alpha <- c(0.1, 0.8, 0.8, 0.8, 1)
-names(escala_alpha) <- c("otras", "anillo", "z.núcleo", "z.preservación",  
+names(escala_alpha) <- c("otras", "periferia", "z.núcleo", "z.preservación",  
     mi_anp_corto)
 
 perdida_anual_cobertura_porcentaje <- perdida_anps_df %>% 
@@ -466,23 +479,18 @@ tasa_cambio_cl <- tasa_cambio %>%
         perdida_ha = ha_loss, clase)
 
 tasa_cambio_mi_anp <- filter(tasa_cambio_cl, anp == mi_anp)
-tasa_cambio_mi_anp_ring <- filter(tasa_cambio_cl, clase == "anillo")
+tasa_cambio_mi_anp_ring <- filter(tasa_cambio_cl, clase == "periferia")
 
-tasa_cambio_plot <- ggplot(tasa_cambio_cl, aes(x = año, y = THH, group = ANP, 
-    label = perdida_ha, color = clase, alpha = clase)) + 
-    geom_line(aes(color = clase, alpha = clase)) +
+tasa_cambio_plot <- ggplot(tasa_cambio_cl, aes(label = perdida_ha)) + 
+    geom_line(aes(x = año, y = THH, group = interaction(ANP, clase), 
+        color = clase, alpha = clase)) +
     scale_alpha_manual(values = escala_alpha) +
     scale_color_manual(values = escala_color) +
     scale_x_continuous(breaks = 2015:2017) +
-    labs(y = "%", x = "año", title = "THH (%)", color = "", 
+    labs(y = "%", x = "año", title = "TTH (%)", color = "", 
          alpha = "") +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-    ylim(min(quantile(tasa_cambio_cl$THH, 0.2),
-        min(tasa_cambio_mi_anp$THH),
-        min(tasa_cambio_mi_anp_ring$THH)), 
-        max(quantile(tasa_cambio_cl$THH, 0.8), 
-            max(tasa_cambio_mi_anp$THH),
-            max(tasa_cambio_mi_anp_ring$THH)))
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
 # que solo aparezca el panel si representa más del 1% del área
 # mis_clases_madmex <- madmex_mi_anp_v$clase_madmex[madmex_mi_anp_v$prop > 1]
 tasa_cambio_clase_aux <- perdida_anps_df %>% 
@@ -524,22 +532,22 @@ tasa_cambio_clase_mi_anp <- filter(tasa_cambio_clase_cl, anp == mi_anp)
 tasa_cambio_clase_mi_anp_ring <- filter(tasa_cambio_clase_cl, 
     anp == str_c(mi_anp, "_ring"))
 
-tasa_cambio_clase_plot <- ggplot(tasa_cambio_clase_cl, aes(x = año, 
-    y = THH, group = ANP, label = perdida_ha)) + 
-    geom_line(aes(color = clase, alpha = clase)) +
+tasa_cambio_clase_plot <- ggplot(tasa_cambio_clase_cl, aes(label = perdida_ha)) + 
+    geom_line(aes(x = año, y = THH, group = interaction(ANP, clase),
+        color = clase, alpha = clase)) +
     scale_alpha_manual(values = escala_alpha) +
     scale_color_manual(values = escala_color) +
     scale_x_continuous(breaks = 2015:2017) +
     theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-    labs(y = "%", x = "año", title = "THH (%)", color = "", 
+    labs(y = "%", x = "año", title = "TTH (%)", color = "",
          alpha = "") +
     facet_wrap(~clase_madmex) 
 
 vars_tooltip <- c("ANP", "año", "THH", "perdida_ha")
 p1 <- ggplotly(tasa_cambio_plot, tooltip = vars_tooltip, 
-                 dynamicTicks = TRUE)
+                 dynamicTicks = FALSE)
 p2 <- ggplotly(tasa_cambio_clase_plot, tooltip = vars_tooltip, 
-                 dynamicTicks = TRUE)
+                 dynamicTicks = FALSE)
 ```
 
 ```{r plot_tth}
@@ -710,7 +718,7 @@ mis_ie_stats <- ie_stats %>%
     left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
         mutate(
             clase = case_when(
-                tipo_id == 2 ~ "anillo",
+                tipo_id == 2 ~ "periferia",
                 tipo_id == 3 ~ "z.núcleo",
                 tipo_id == 4 ~ "z.preservación"
             ) 
@@ -743,33 +751,6 @@ ie_boxplot <- ggplot() +
     labs(x = ",", title = "Integridad Ecosistémica", y = "")
 
 ie_boxplot
-
-# ie_stats_por_anp <- readr::read_csv("../datos_procesados/integridad/ie_stats_por_anp.csv")
-# ie_stats_por_anp_rings <- readr::read_csv("../datos_procesados/integridad/ie_stats_por_anp_rings.csv")
-
-
-# ie_stats_anp <- ie_stats_por_anp_rings %>% 
-#     rename(filename_ring = filename, mean_ring = mean, sd_ring = sd) %>% 
-#     mutate(
-#         anp = str_replace(anp, "_ring", ""), 
-#         clase = ifelse(anp == mi_anp, mi_anp,  # quedaría mejor con case_when
-#             ifelse(anp == str_c(mi_anp, "_ring"), "anillo", "otras"))
-#         ) %>% 
-#     filter(anp %in% mis_anps) %>% 
-#     left_join(ie_stats_por_anp) %>% 
-#     mutate(
-#         media = round(mean, 2), 
-#         media_anillo = round(mean_ring, 2), 
-#         desv.est = round(sd, 2)
-#     )
-# ie_anp <- ggplot(ie_stats_anp, aes(x = media, y = media_anillo, 
-#     label = anp, color = clase, size = desv.est)) + 
-#     geom_abline(alpha = 0.8, color = "red") +
-#     geom_point(alpha = 0.5) +
-#     scale_color_manual("",values = escala_color) +
-#     labs(x = "ANP", y = "anillo ANP", size = "", 
-#         title = "Integridad Ecosistémica (medias)")
-# ggplotly(ie_anp, tooltip = c("label", "x", "y", "size"))
 ```
 </div>
 
@@ -948,14 +929,14 @@ mi_ih_stats <- suit_stats %>%
     filter(anp == mi_anp, tipo != "ANP") %>% 
     mutate(
         clase = case_when(
-            tipo == "anillo" ~ "anillo",
+            tipo == "anillo" ~ "periferia",
             tipo == "núcleo" ~ "z.núcleo",
             tipo == "preservación" ~ "z.preservación"
         )
     )
 
 escala_color_sin_anp <- c("#005b96", "#7CCD7C", "#AB82FF")
-names(escala_color_sin_anp) <- c("anillo", "z.núcleo", "z.preservación")
+names(escala_color_sin_anp) <- c("periferia", "z.núcleo", "z.preservación")
 plot_ih_anio <- ggplot(mi_tabla_suit_anp, aes(x = factor(anio), y = idoneidad)) +
     geom_boxplot(alpha = 0.6, show.legend = FALSE, 
         outlier.color = "gray90", coef = 0, color = "gray50") +
@@ -986,7 +967,7 @@ ih_stats_2014 <- suit_stats %>%
     left_join(anp_nombres) %>% 
     mutate(
         clase = case_when(
-            tipo == "anillo" ~ "anillo",
+            tipo == "anillo" ~ "periferia",
             tipo == "núcleo" ~ "z.núcleo",
             tipo == "preservación" ~ "z.preservación"
         )
