@@ -4,7 +4,7 @@ output:
         css: estilo.css
 params:
     mi_anp:
-        value: anp_terrestres_2017_NOMBRE_Bonampak
+        value: anp_terrestres_2017_NOMBRE_Montes_Azules
 ---
 
 <!-- css -->
@@ -12,9 +12,7 @@ params:
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 # library(DT)
 library(raster)
-library(rgdal)
-library(sp)
-library(rgeos)
+# library(sf)
 library(dplyr)
 library(ggplot2)
 library(stringr)
@@ -25,24 +23,37 @@ library(kableExtra)
 library(plotly)
 library(leaflet)
 library(tidyr)
-
-# library(rmapshaper)
+library(readr)
 
 knitr::opts_chunk$set(echo = FALSE, fig.align="center", message = FALSE, 
-    warning = FALSE, cache = TRUE)
+    warning = FALSE, cache = FALSE)
 comma <- function(x) format(x, digits = 3, big.mark = ",")
-
+obtener_anps <- function(mi_anp){
+    mi_info <- manejo_ha_anp %>% 
+        filter(anp == mi_anp)
+    tab_eco <- filter(manejo_ha_anp, eco == pull(mi_info, eco))
+    if (nrow(tab_eco) > 5){
+        mi_tamano <-  pull(mi_info, S_TERRES)
+        tab_eco <- tab_eco %>% 
+            ungroup() %>% 
+            mutate(dist = abs(S_TERRES - mi_tamano)) %>% 
+            arrange(dist) %>% 
+            top_n(n = 6, -dist) 
+    }
+    pull(tab_eco, anp)
+}
 theme_set(theme_minimal())
 
 anp_nombres <- readr::read_delim("../datos_insumo/anp_nombres.tsv", "\t", 
     escape_double = FALSE, trim_ws = TRUE)
+manejo_ha_anp <- read_csv("../datos_procesados/2018-08-10_manejo_ha_anp.csv")
 
 mi_anp <- params$mi_anp
-
 mi_anp_nombres <- anp_nombres %>% 
     filter(anp_sin_acentos == mi_anp)
 mi_anp_corto <- mi_anp_nombres$anp_corto
 mi_anp_print <- str_replace_all(mi_anp_nombres$anp, "_", " ")
+mis_anps_eco <- obtener_anps(mi_anp)
 ```
 
 ## ANP `r mi_anp_print ` {.tabset}
@@ -51,93 +62,76 @@ mi_anp_print <- str_replace_all(mi_anp_nombres$anp, "_", " ")
 
 #### Ecorregiones 
 
-```{r}
+```{r shapes}
 path_anps_shp <- "../datos_insumo/shapes_anp/anp_sinBuffer/"
 path_anps_rings_shp <- "../datos_insumo/shapes_anp/anp_rings/"
-
 mi_anp_shp_file <- list.files(path_anps_shp, 
     pattern = str_c(mi_anp, ".shp"), recursive = FALSE) %>%
     tools::file_path_sans_ext() 
+mi_anp_shp <- rgdal::readOGR(path_anps_shp, mi_anp_shp_file, verbose = FALSE)
 
-mi_anp_shp <- readOGR(path_anps_shp, mi_anp_shp_file, verbose = FALSE)
-# mi_anp_shp <- rmapshaper::ms_simplify(mi_anp_shp)
-
-mi_anp_ring_shp <- readOGR(path_anps_rings_shp, str_c(mi_anp_shp_file, "_ring"), 
-    verbose = FALSE)
-# mi_anp_ring_shp <- rmapshaper::ms_simplify(mi_anp_ring_shp)
-
-# mi_anp_buffer_shp <- raster::union(mi_anp_shp, mi_anp_ring_shp)
+# mi_anp_shp_file <- list.files(path_anps_shp, 
+#     pattern = str_c(mi_anp, ".shp"), full.names = TRUE)
+# mi_anp_shp <- read_sf(mi_anp_shp_file)
 ```
 
 
 ```{r tabla_eco, eval = TRUE, echo = FALSE, message=FALSE}
 # por ahora cada ANP se asigna a una sola ecorregión, la más prevalente
-load("../datos_procesados/2017-10-24_ecorregion.RData")
-load("../datos_procesados/2017-10-24_ecorregion_rings.RData")
+load("../datos_procesados/2018-08-08_ecorregion.RData")
+load("../datos_procesados/2018-08-08_area_rings.RData")
 
-# asignamos la ecorregión más prevalente 
-anp_eco_df <- anp_eco_df %>% 
-    group_by(anp) %>% 
-    mutate(
-        p_area_eco = (hectareas / sum(hectareas)) * 100, 
-        hectareas = sum(hectareas)
-        ) %>%
-    top_n(1, p_area_eco) %>% 
-    ungroup()
-
-
-anp_rings_eco_df <- anp_rings_eco_df %>% 
+anp_rings_eco_df <- anps_area_anillos %>% 
+    distinct() %>% 
     mutate(
       anp = str_replace(anp, "_ring", "")
     ) %>% 
-    group_by(anp) %>% 
-    summarise(hectareas_ring = sum(hectareas)) %>% 
-    ungroup()
+    rename(ha_anillo = hectareas)
 
-mi_anp_eco <- anp_eco_df %>% filter(anp == mi_anp)
-mis_eco <- mi_anp_eco %>% pull(eco)
-mis_anps_df <- anp_eco_df %>% 
-    filter(eco %in% mis_eco)
-if(nrow(mis_anps_df) > 10) mis_anps_df <- filter(mis_anps_df, hectareas >= 1000)
-mis_anps <- mis_anps_df %>% pull(anp) %>% union(mi_anp)
+mi_eco_info <- manejo_ha_anp %>% 
+    filter(anp == mi_anp) 
+mi_eco <- mi_eco_info %>% 
+    pull(eco)
 
-anp_eco_table <- anp_eco_df %>% 
-    filter(anp %in% mis_anps, !is.na(anp)) %>% 
-    left_join(anp_rings_eco_df) %>% 
+anp_eco_table <- manejo_ha_anp %>% 
+    filter(anp %in% mis_anps_eco, !is.na(anp)) %>% 
+    left_join(anp_rings_eco_df, by = "anp") %>% 
     mutate(
-        hectareas = comma(round(hectareas)), 
-        hectareas_ring = comma(round(hectareas_ring))
+        ha = comma(round(hectareas)), 
+        ha_anillo = comma(round(ha_anillo))
         ) %>% 
-    dplyr::select(anp, hectareas, hectareas_ring) %>% 
-    arrange(desc(hectareas))
+    dplyr::select(anp, cat_manejo, ha, ha_anillo) %>% 
+    arrange(desc(ha))
 
-titulo_tab <- c(3)
-names(titulo_tab) <- c(mis_eco)
+titulo_tab <- c(4)
+names(titulo_tab) <- c(mi_eco)
 
 anp_eco_table %>% 
     left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
-    select(anp_corto, hectareas, hectareas_ring) %>% 
-    kable("html", align = c("r", "c", "c"), padding = 10, 
-        col.names = c("", "ha", "ha anillo")) %>%
+    select(anp_corto, cat_manejo, ha, ha_anillo) %>% 
+    kable("html", align = c("r", "c", "c", "c"), padding = 10, 
+        col.names = c("", "cat", "ANP ha", "Periferia ha")) %>%
     kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
         position = "float_right", font_size = 11, full_width = FALSE) %>% 
-    row_spec(which(anp_eco_table$anp == mi_anp), bold = F, color = "#79797d", background = "mistyrose") %>% 
+    row_spec(which(anp_eco_table$anp == mi_anp), bold = F, color = "#79797d", 
+        background = "mistyrose") %>% 
     row_spec(1:nrow(anp_eco_table), color = "#79797d")  %>%
     add_header_above(titulo_tab) # %>%
     # scroll_box(width = "100px", height = "200px", box_css = "float: right;") 
     # group_rows("Selvas Cálido-Húmedas", label_row_css = "color: #79797d;", 1, 37)
 ```
 
-A lo largo del reporte los indicadores de la ANP objetivo se comparan con los 
-indicadores de otras ANPs de la misma ecorregión, esto se hace para poder 
+A lo largo del reporte los indicadores del área natural protegida (ANP) objetivo se comparan con los 
+indicadores de otras ANP de la misma ecorregión, esto se hace para poder 
 contextuaizar los valores obtenidos. Utilizamos la definición de ecorregión del 
 mapa de [Ecorregiones terrestres de México (2008)](http://www.conabio.gob.mx/informacion/metadata/gis/ecort08gw.xml?_xsl=/db/metadata/xsl/fgdc_html.xsl&_indent=no) 
 elaborado por INEGI, CONABIO e INE.
 
-La tabla de abajo indica para cada ecorregión cuántas hectáreas hay en ANPs y el 
-número de ANPs con territorio en cada una.
+La tabla de abajo indica para cada ecorregión cuántas hectáreas hay en ANP y el 
+número de ANP con territorio en cada una.
 
 ```{r}
+load("../datos_procesados/2018-08-08_ecorregion.RData")
 anp_eco_df_table <- anp_eco_df %>%
     group_by(eco) %>%
     summarise(
@@ -151,36 +145,26 @@ anp_eco_df_table %>%
     kable("html", col.names = c("", "ha", "# ANPs")) %>%
     kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
         position = "left", font_size = 12, full_width = FALSE) %>% 
-    row_spec(which(anp_eco_df_table$eco == mis_eco), bold = F, color = "#79797d", background = "mistyrose")
+    row_spec(which(anp_eco_df_table$eco == mi_eco), bold = F, color = "#79797d", 
+        background = "mistyrose")
 ```
-<!--
-La ANP `r mi_anp` pertenece a `r ifelse(length(mis_eco) > 1, str_c("la ecorregiones ", 
-str_c(mis_eco, collapse = ", ")), str_c("la ecorregión ", mis_eco))`, y por tanto
-en los siguientes análisis se compararán los indicadores de las ANPs con 
-territorio en `r str_c(mis_eco, collapse = ", ")`, consideramos aquellas ANPs con 
-al menos 1,000 hectáreas, estas se indican en la tabla de la derecha.
--->
 
 A cada ANP le asignamos la ecorregión de mayor prevalencia, es decir, si la ANP
 pertenece a más de una ecorregión le asignamos aquella donde esté la mayor 
 parte de su terreno. En el caso de la ANP *`r mi_anp_print`* se le asignó la ecorregión
-`r mis_eco`, que engloba el `r round(mi_anp_eco$p_area_eco)`% del área total de 
+`r mi_eco`, que engloba el `r round(mi_eco_info$p_area_eco)`% del área total de 
 la ANP. Por tanto, en los siguientes análisis se compararán los 
-indicadores de las ANPs asignadas a la ecorregión `r mis_eco`, 
-consideramos únicamente aquellas ANPs con al menos 1,000 hectáreas, estas se 
-indican en la tabla de la derecha.
+indicadores de las ANPs asignadas a la ecorregión `r mi_eco` y si es posible
+de tamaño similar.
 
-#### Anillos
+```
+#### Anillos, Zonas núcleo y Zonas de Preservación
 
-Adicional a la comparación con otras ANPs comparamos los distintos indicadores 
-dentro de las ANPs con los equivalentes en los alrededores de las mismas, para 
-esto se definieron los anillos como el área de los 25 km circundantes a cada ANP. 
+Adicional a la comparación con otras ANP comparamos los distintos indicadores dentro de las ANP los equivalentes alrededor de las mismas, para esto se definieron los anillos como el área de los 25 km circundantes a cada ANP, así como en Zonas núcleo y Zonas de preservación si las ANP las presentan.
 
-Vale la pena notar que el anillo de las ANPs puede no corresponder a la misma 
-ecorregión, o puede variar mucho en extensión, sin embargo, consideramos que, 
-teniendo esto en cuenta, es informativo conocer los indicadores en estas regiones.
+Vale la pena notar que el anillo de la ANP puede no corresponder a la misma ecorregión, puede pertenecer a otra ANP cercana o puede representar un superficie mayor a la de la propia ANP, sin embargo, consideramos que, teniendo esto en cuenta, es informativo conocer los indicadores en esta zona, la cual representa el grado de presión antropogénica circundante.
 En el caso de la ANP *`r mi_anp_print`* el área total de su anillo resulta en 
-`r comma(filter(anp_eco_table, anp == mi_anp)$hectareas_ring)` hectáreas. La tabla del 
+`r comma(filter(anp_eco_table, anp == mi_anp)$ha_anillo)` hectáreas. La tabla del 
 lado derecho indica la extensión de los anillos para las ANPs asignadas a la misma 
 ecorregión que *`r mi_anp_print`*.
 
@@ -188,32 +172,30 @@ ecorregión que *`r mi_anp_print`*.
 </div>
 
 ```{r}
-load("../datos_procesados/2017-10-23_anp_region.RData")
-anp_region_eco <- anp_region_cl %>% 
-    left_join(anp_eco_df, by = "anp")
+mi_region <- manejo_ha_anp %>% 
+    filter(anp == mi_anp) %>% 
+    pull(region)
 
-mi_anp_region <- anp_region_eco %>% filter(anp == mi_anp)
-mis_region <- mi_anp_region %>% pull(region)
-mis_anps_region <- anp_region_eco %>% 
-    filter(region %in% mis_region) %>% pull(anp)
+mis_anps_region <- manejo_ha_anp %>% 
+    filter(region %in% mi_region) %>% pull(anp)
 
-anp_region_table <- anp_region_eco %>% 
-    filter(anp %in% mis_anps_region, region %in% mis_region) %>%
+anp_region_table <- manejo_ha_anp %>% 
+    filter(anp %in% mis_anps_region, region %in% mi_region) %>%
     left_join(anp_rings_eco_df, by = "anp") %>% 
     left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
     mutate(
-        hectareas = comma(round(hectareas)), 
-        hectareas_ring = comma(round(hectareas_ring))
+        hectareas = comma(round(S_TERRES)), 
+        hectareas_ring = comma(round(ha_anillo))
         # anp = str_replace_all(str_sub(anp, start = 1, end = 20), "_", " ")
         ) %>% 
     arrange(desc(hectareas))
 
-titulo_tab_region <- c(3)
-names(titulo_tab_region) <- str_c(mis_region, collapse = ",")
+titulo_tab_region <- c(4)
+names(titulo_tab_region) <- mi_region
 anp_region_table %>% 
-    dplyr::select(anp_corto, hectareas, hectareas_ring) %>%
-    kable("html", align = c("r", "c", "c"), padding = 10, 
-        col.names = c("", "ha", "ha anillo")) %>%
+    dplyr::select(anp_corto, cat_manejo, hectareas, hectareas_ring) %>%
+    kable("html", align = c("r", "c", "c", "c"), padding = 10, 
+        col.names = c("", "cat", "ANP ha", "Periferia ha")) %>%
     kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
         position = "float_right", font_size = 11, full_width = FALSE) %>% 
     row_spec(which(anp_region_table$anp == mi_anp), bold = F, color = "#79797d", 
@@ -225,15 +207,15 @@ anp_region_table %>%
 #### Regiones CONANP
 
 Adicional a los análisis de ecorregión agregamos comparativos con las regiones
-CONANP, la tabla de abajo indica cuantas hectáreas hay en las ANPs correspondientes 
+CONANP, la tabla de abajo indica cuantas hectáreas hay en las ANP correspondientes 
 a cada región y el número de ANPs de cada una.
 
 
 ```{r}
-anp_region_eco_table <- anp_region_eco %>% 
+anp_region_eco_table <- manejo_ha_anp %>% 
     group_by(region) %>%
     summarise(
-        hectareas = round(sum(hectareas)),
+        hectareas = round(sum(S_TERRES)),
         n_anps = n()
     ) %>%
     arrange(hectareas) %>%
@@ -243,10 +225,10 @@ anp_region_eco_table %>%
     kable("html", col.names = c("", "ha", "# ANPs")) %>%
     kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
         position = "left", font_size = 11, full_width = FALSE) %>% 
-    row_spec(which(anp_region_eco_table$region == mis_region), bold = F, 
+    row_spec(which(anp_region_eco_table$region == mi_region), bold = F, 
         color = "#79797d", background = "mistyrose") 
 ```
-La tabla de la derecha indica las ANPs de la región, las hectáreas que comprende
+La tabla de la derecha indica las ANP de la región, las hectáreas que comprende
 cada una y la extensión de los anillos que las rodean.
 
 
@@ -259,29 +241,35 @@ cada una y la extensión de los anillos que las rodean.
 #### Clases de cobertura
 
 ```{r tabla_madmex}
-madmex <- raster("../datos_insumo/madmex_nalc_10c_30m_2010.tif")
+madmex <- raster("../rasters/mapabase_8clases_re_2015_30m_wgs84nodefs_cropped.tif")
 madmex_mi_anp <- madmex %>% 
     raster::crop(mi_anp_shp) %>%
     mask(mask = mi_anp_shp)
 
-madmex_mi_anp_v <- values(madmex_mi_anp)
-madmex_mi_anp_c <-  case_when(
-        madmex_mi_anp_v == 1 ~ "bosque",
-        madmex_mi_anp_v == 2 ~ "selva",
-        madmex_mi_anp_v == 3 ~ "matorral",
-        madmex_mi_anp_v == 4 ~ "pastizal",
-        madmex_mi_anp_v == 5 ~ "sin vegetación aparente",
-        madmex_mi_anp_v == 6 ~ "humedal",
-        madmex_mi_anp_v == 7 ~ "agricultura",
-        madmex_mi_anp_v == 8 ~ "asentamiento humano",
-        madmex_mi_anp_v == 9 ~ "agua",
-        madmex_mi_anp_v == 10 ~ "nieve y hielo"
-    )
+madmex_cobertura <- read_csv("../datos_procesados/2018-09-06_cobertura.csv")
+madmex_mi_anp_tab <- madmex_cobertura %>% 
+    filter(anp == mi_anp, tipo_id == 1) %>% 
+    mutate(clase = case_when(
+        clase_madmex == 1 ~ "bosque",
+        clase_madmex == 2 ~ "selva",
+        clase_madmex == 3 ~ "matorral",
+        clase_madmex == 4 ~ "pastizal",
+        clase_madmex == 5 ~ "sin vegetación aparente",
+        clase_madmex == 6 ~ "humedal",
+        clase_madmex == 7 ~ "agricultura",
+        clase_madmex == 8 ~ "asentamiento humano",
+        clase_madmex == 9 ~ "agua",
+        clase_madmex == 10 ~ "nieve y hielo"
+    )) %>% 
+    group_by(clase) %>% 
+    summarise(n = sum(n)) %>% 
+    ungroup() %>% 
+    mutate(prop = round(100 * (n / sum(n)), 1))
 
-madmex_tab <- round(prop.table(table(madmex_mi_anp_c)) * 100, 2)
-data.frame(round(prop.table(table(madmex_mi_anp_c)) * 100, 2)) %>% 
-    filter(Freq > 0.1) %>% 
-    arrange(-Freq) %>% 
+madmex_mi_anp_tab %>% 
+    select(-n) %>% 
+    arrange(-prop) %>% 
+    filter(prop > 1) %>% 
     kable("html", col.names = c("", "% área")) %>%
     kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
         position = "float_right", font_size = 11, full_width = FALSE)
@@ -313,12 +301,25 @@ leaflet(data = mi_anp_shp) %>%
         fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, 
             lat2 = ext@ymax) %>% 
         addProviderTiles(providers$Esri.WorldImagery) %>% 
-        addRasterImage(madmex_mi_anp, color = pal, opacity = 0.6, 
-            maxBytes = 8 * 1024 * 1024, project = FALSE) %>% 
-        addLegend("bottomright", values = 1:10, colors = colores_madmex,
-            title = "MAD-MEX (2010)", labels = c("bosques", "selvas", "matorrales", 
-                "pastizal", "sin vegetación aparente", "humedal", "agricultura", 
-                "asentamiento humano", "agua", "nieve y hielo"), opacity = 0.6)
+        addWMSTiles("http://www.conabio.gob.mx/informacion/explorer/wms?Format=image/png&request=GetMap&version=1.1.1",
+            layers = "spt1mgw", group = "GAP", 
+            options = WMSTileOptions(format = "image/png", transparent = TRUE)) 
+        # addWMSTiles(
+        # "http://webportal.conabio.gob.mx:8085/geoserver/MEX_IE3C_250m/wms?",
+        #     layers = "MEX_IE3C_250m:ie3c_2014_250m",
+        #     options = WMSTileOptions(format = "image/png", transparent = TRUE)
+        # ) %>% 
+        # addLegend("bottomright", values = 1:10, colors = colores_madmex,
+        #     title = "MAD-MEX (2010)", labels = c("bosques", "selvas", "matorrales", 
+        #         "pastizal", "sin vegetación aparente", "humedal", "agricultura", 
+        #         "asentamiento humano", "agua", "nieve y hielo"), opacity = 0.6) %>% 
+        # addLayersControl(
+        #     overlayGroups = c("GAP"),
+        #     options = layersControlOptions(collapsed = FALSE)
+        # )  %>% 
+        #   addWMSLegend(uri = "http://webportal.conabio.gob.mx:8085/geoserver/web/?wicket:bookmarkablePage=:org.geoserver.wms", position = "topleft", layerId = "legend") %>%
+        # hideGroup("GAP")
+
 ```
 
 
@@ -331,17 +332,16 @@ deforestación para los años 2000 a 2014, con una resolución de 30 m^2^.
 -->
 
 El siguiente mapa muestra en rojo las zonas que se identificaron como pérdida de
-cobertura forestal en los últimos 5 años de datos, esto es entre 2011 y 2016.
+cobertura forestal en los últimos 5 años de datos, esto es entre 2012 y 2017.
 
 ```{r hansen_map}
-hansen_loss <- raster("../datos_insumo/hansen_forest_loss_v1_4_wgs84nodefs.tif")
+hansen_loss <- raster("../rasters/hansen_forest_loss_v1_5_wgs84nodefs_cropped.tif")
 
 hansen_mi_anp <- hansen_loss %>% 
-    raster::crop(mi_anp_shp) %>%            # cortamos el raster a la dimensión del ANP
+    raster::crop(mi_anp_shp) %>%            
     mask(mask = mi_anp_shp)
-hansen_mi_anp[hansen_mi_anp < 11] <- NA
+hansen_mi_anp[hansen_mi_anp < 12] <- NA
 
-ext <- raster::extent(mi_anp_shp)
 leaflet(data = mi_anp_shp) %>% 
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
         opacity = 1.0, fillOpacity = 0.2) %>% 
@@ -364,79 +364,48 @@ que los paneles del lado derecho cada cobertura de uso de suelo. -->
 
 En las gráficas de abajo la línea roja representa la transformación de cobertura boscosa en la ANP, 
 la línea azul representa la misma transformación en el anillo circundante
-y las líneas grises el equivalente en las ANPs de la ecorregión. En la 
-gráfica del lado izquierdo podemos leer los resultados a total mientras 
+y las líneas grises el equivalente en las otras ANP de la ecorregión. En la 
+gráfica del lado izquierdo podemos leer los resultados totales, mientras 
 que los paneles del lado derecho cada cobertura de uso de suelo. Al situar el 
 cursor sobre la gráfica se informa también la pérdida de cobertura boscosa media en hectáreas.
 
 ```{r deforestacion_tiempo, fig.width = 8, fig.height=4.5}
-load("../datos_procesados/2017-10-22_perdida_cobertura.RData")
-load("../datos_procesados/2017-10-22_perdida_cobertura_rings.RData")
-
-perdida_mi_anp_ring <- perdida_anps_rings_df  %>% 
-    # mutate(anp = str_replace(anp, "anp_terrestres_2017_NOMBRE_", "")) %>% 
-    filter(anp == str_c(mi_anp, "_ring"))
-
-perdida_anps_df <- perdida_anps_df %>% 
-    # mutate(anp = stringr::str_replace(anp, "anp_terrestres_2017_NOMBRE_", "")) %>% 
-    filter(anp %in% mis_anps) %>% 
-    bind_rows(perdida_mi_anp_ring) %>% 
-    filter(!is.na(year_loss)) %>% 
+perdida_anps_df <- madmex_cobertura %>% 
+    filter((anp %in% mis_anps_eco & tipo_id == 1) | 
+        (anp == mi_anp & tipo_id == 2) | (anp == mi_anp & tipo_id == 3) | 
+        (anp == mi_anp & tipo_id == 4)) %>% 
     mutate(
-        year_loss = year_loss + 2000, 
         clase = case_when(
+            tipo_id == 2 ~ "periferia",
+            tipo_id == 3 ~ "z.núcleo",
+            tipo_id == 4 ~ "z.preservación",
             anp == mi_anp ~ mi_anp_corto,
-            anp == str_c(mi_anp, "_ring") ~ "anillo", 
             TRUE ~ "otras")
         )
 
 perdida_anual_porcentaje <- perdida_anps_df %>% 
-    group_by(year_loss, anp, clase) %>% 
+    group_by(anio_perdida, anp, clase) %>% 
     summarise(n = sum(n)) %>% 
     group_by(anp, clase) %>% 
     mutate(
         percent_loss = round(n / sum(n) * 100, 3), 
         ha_loss = n * 3 * 3 / 100) %>% 
-    filter(year_loss > 2000) %>% 
     ungroup()
-
-
-# perdida_anual_porcentaje_mi_anp <- filter(perdida_anual_porcentaje, anp == mi_anp)
-# perdida_anual_porcentaje_mi_anp_ring <- filter(perdida_anual_porcentaje, anp == str_c(mi_anp, "_ring"))
-# 
-escala_color <- c("gray50", "#005b96", "#ff420e")
-names(escala_color) <- c("otras", "anillo", mi_anp_corto)
-escala_alpha <- c(0.1, 0.8, 1)
-names(escala_alpha) <- c("otras", "anillo", mi_anp_corto)
-# 
-# # limpiamos para etiquetas en español
-# perdida_anual_porcentaje_cl <- perdida_anual_porcentaje %>% 
-#     left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
-#     mutate(
-#         anp = ifelse(anp == stringr::str_c(mi_anp, "_ring"), 
-#             str_c(mi_anp_corto, " anillo"), anp_corto),
-#         ) %>% 
-#     select(ANP = anp, año = year_loss, perdida = percent_loss, perdida_ha = ha_loss, clase)
-# 
-# perdida_anual_plot <- ggplot(perdida_anual_porcentaje_cl, aes(x = año, 
-#     y = perdida, group = ANP, label = perdida_ha)) + 
-#     geom_line(aes(color = clase, alpha = clase)) +
-#     scale_alpha_manual(values = escala_alpha) +
-#     scale_color_manual(values = escala_color) +
-#     labs(y = "% área", x = "año", title = "Pérdida anual", color = "", 
-#          alpha = "") +
-#     ylim(0, max(quantile(perdida_anual_porcentaje$percent_loss, 0.8),
-#         max(perdida_anual_porcentaje_mi_anp$percent_loss),
-#         max(perdida_anual_porcentaje_mi_anp_ring$percent_loss)))
+escala_color <- c("gray50", "#005b96", "#7CCD7C", "#AB82FF", "#ff420e")
+names(escala_color) <- c("otras", "periferia", "z.núcleo", "z.preservación",  
+    mi_anp_corto)
+escala_alpha <- c(0.1, 0.8, 0.8, 0.8, 1)
+names(escala_alpha) <- c("otras", "periferia", "z.núcleo", "z.preservación",  
+    mi_anp_corto)
 
 perdida_anual_cobertura_porcentaje <- perdida_anps_df %>% 
-    group_by(year_loss, anp, clase, clase_madmex) %>% 
+    group_by(anio_perdida, anp, clase, clase_madmex) %>% 
     summarise(n = sum(n)) %>% 
     group_by(anp, clase, clase_madmex) %>% 
     mutate(percent_loss = round(n / sum(n) * 100, 3), 
         ha_loss = n * 3 * 3 / 100) %>%  
     ungroup() %>% 
-    filter(year_loss > 2000, clase_madmex %in% c(1:3, 6)) %>% 
+    filter(anio_perdida > 2000, clase_madmex %in% c(1:3, 6)) %>% 
     mutate(clase_madmex = case_when(
         clase_madmex == 1 ~ "bosque", 
         clase_madmex == 2 ~ "selva", 
@@ -478,17 +447,15 @@ perdida_anual_cobertura_porcentaje <- perdida_anps_df %>%
 
 
 ```{r tasa_cambio, fig.width = 8, fig.height=4.5}
-# falta poner etiquetas limpias
 tasa_cambio_aux <- perdida_anps_df %>% 
-    filter(clase_madmex %in% c(1:3, 6)) %>% 
-    group_by(year_loss, anp, clase) %>% 
+    group_by(anio_perdida, anp, clase) %>% 
     summarise(n = sum(n)) %>% 
     group_by(anp, clase) %>% 
     mutate(
         area_total = sum(n)
     )
 
-tasa_cambio_aux$n[tasa_cambio_aux$year_loss == 2000] <- 0
+tasa_cambio_aux$n[tasa_cambio_aux$anio_perdida == 2000] <- 0
 
 tasa_cambio <- tasa_cambio_aux %>% 
     group_by(anp, clase) %>% 
@@ -497,44 +464,41 @@ tasa_cambio <- tasa_cambio_aux %>%
         area_restante = area_total - cum_loss, 
         tasa_cambio = round(100 * (area_restante / lag(area_restante) - 1), 3)
         ) %>% 
-    filter(year_loss > 2000) %>% 
+    filter(anio_perdida > 2000) %>% 
     ungroup() %>% 
-    select(anp, year_loss, tasa_cambio, clase)
+    select(anp, anio_perdida, tasa_cambio, clase)
 
 tasa_cambio_cl <- tasa_cambio %>% 
-  left_join(perdida_anual_porcentaje, by = c("anp", "year_loss", "clase")) %>% 
+  left_join(perdida_anual_porcentaje, by = c("anp", "anio_perdida", "clase")) %>% 
   left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
-    mutate(
-        anp_corto = ifelse(anp == stringr::str_c(mi_anp, "_ring"), 
-            str_c(mi_anp_corto, " anillo"), anp_corto),
-        ) %>% 
-    select(anp, ANP = anp_corto, año = year_loss, THH = tasa_cambio, perdida_ha = ha_loss, clase)
+    filter(anio_perdida >= 2015) %>% 
+    select(anp, ANP = anp_corto, año = anio_perdida, THH = tasa_cambio, 
+        perdida_ha = ha_loss, clase)
 
 tasa_cambio_mi_anp <- filter(tasa_cambio_cl, anp == mi_anp)
-tasa_cambio_mi_anp_ring <- filter(tasa_cambio_cl, anp == str_c(mi_anp, "_ring"))
+tasa_cambio_mi_anp_ring <- filter(tasa_cambio_cl, clase == "periferia")
 
-tasa_cambio_plot <- ggplot(tasa_cambio_cl, aes(x = año, 
-    y = THH, group = ANP, label = perdida_ha)) + 
-    geom_line(aes(color = clase, alpha = clase)) +
+tasa_cambio_plot <- ggplot(tasa_cambio_cl, aes(label = perdida_ha)) + 
+    geom_line(aes(x = año, y = THH, group = interaction(ANP, clase), 
+        color = clase, alpha = clase)) +
     scale_alpha_manual(values = escala_alpha) +
     scale_color_manual(values = escala_color) +
-    labs(y = "%", x = "año", title = "THH (%)", color = "", 
+    scale_x_continuous(breaks = 2015:2017) +
+    labs(y = "%", x = "año", title = "TTH (%)", color = "", 
          alpha = "") +
-    ylim(min(quantile(tasa_cambio_cl$THH, 0.2),
-        min(tasa_cambio_mi_anp$THH),
-        min(tasa_cambio_mi_anp_ring$THH)), 
-        max(quantile(tasa_cambio_cl$THH, 0.8), 
-            max(tasa_cambio_mi_anp$THH),
-            max(tasa_cambio_mi_anp_ring$THH)))
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
+# que solo aparezca el panel si representa más del 1% del área
+# mis_clases_madmex <- madmex_mi_anp_v$clase_madmex[madmex_mi_anp_v$prop > 1]
 tasa_cambio_clase_aux <- perdida_anps_df %>% 
+    # filter(clase_madmex %in% c(1:3, 6), clase_madmex %in% mis_clases_madmex) %>% 
     filter(clase_madmex %in% c(1:3, 6)) %>% 
     group_by(anp, clase, clase_madmex) %>% 
     mutate(
         area_total = sum(n)
     )
 
-tasa_cambio_clase_aux$n[tasa_cambio_clase_aux$year_loss == 2000] <- 0
+tasa_cambio_clase_aux$n[tasa_cambio_clase_aux$anio_perdida == 2000] <- 0
 
 tasa_cambio_clase <- tasa_cambio_clase_aux %>% 
     group_by(anp, clase, clase_madmex) %>% 
@@ -543,7 +507,7 @@ tasa_cambio_clase <- tasa_cambio_clase_aux %>%
         area_restante = area_total - cum_loss, 
         tasa_cambio = round(100 * (area_restante / lag(area_restante) - 1), 3)
         ) %>% 
-    filter(year_loss > 2000) %>% 
+    filter(anio_perdida > 2000) %>% 
     ungroup() %>% 
     mutate(clase_madmex = case_when(
         clase_madmex == 1 ~ "bosque", 
@@ -551,43 +515,42 @@ tasa_cambio_clase <- tasa_cambio_clase_aux %>%
         clase_madmex == 3 ~ "matorrales", 
         clase_madmex == 6 ~ "humedal")
         ) %>% 
-    select(anp, year_loss, tasa_cambio, clase, clase_madmex)
+    select(anp, anio_perdida, tasa_cambio, clase, clase_madmex)
 
 tasa_cambio_clase_cl <- tasa_cambio_clase %>% 
-  left_join(perdida_anual_cobertura_porcentaje, by = c("anp", "year_loss", "clase", "clase_madmex")) %>% 
-  left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
-    mutate(
-        anp_corto = ifelse(anp == stringr::str_c(mi_anp, "_ring"), 
-            str_c(mi_anp_corto, " anillo"), anp_corto),
-        ) %>% 
-    select(anp, ANP = anp_corto, año = year_loss, THH = tasa_cambio, perdida_ha = ha_loss, 
-           clase, clase_madmex)
+    left_join(perdida_anual_cobertura_porcentaje, 
+    by = c("anp", "anio_perdida", "clase", "clase_madmex")) %>% 
+    left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
+    filter(anio_perdida >= 2015) %>% 
+    select(anp, ANP = anp_corto, año = anio_perdida, THH = tasa_cambio, 
+        perdida_ha = ha_loss, clase, clase_madmex)
 
 tasa_cambio_clase_mi_anp <- filter(tasa_cambio_clase_cl, anp == mi_anp)
-tasa_cambio_clase_mi_anp_ring <- filter(tasa_cambio_clase_cl, anp == str_c(mi_anp, "_ring"))
+tasa_cambio_clase_mi_anp_ring <- filter(tasa_cambio_clase_cl, 
+    anp == str_c(mi_anp, "_ring"))
 
-tasa_cambio_clase_plot <- ggplot(tasa_cambio_clase_cl, aes(x = año, 
-    y = THH, group = ANP, label = perdida_ha)) + 
-    geom_line(aes(color = clase, alpha = clase)) +
+tasa_cambio_clase_plot <- ggplot(tasa_cambio_clase_cl, aes(label = perdida_ha)) + 
+    geom_line(aes(x = año, y = THH, group = interaction(ANP, clase),
+        color = clase, alpha = clase)) +
     scale_alpha_manual(values = escala_alpha) +
     scale_color_manual(values = escala_color) +
-    labs(y = "%", x = "año", title = "THH (%)", color = "", 
+    scale_x_continuous(breaks = 2015:2017) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    labs(y = "%", x = "año", title = "TTH (%)", color = "",
          alpha = "") +
-    facet_wrap(~clase_madmex) +
-    ylim(min(quantile(tasa_cambio_clase_cl$THH, 0.2),
-        min(tasa_cambio_clase_mi_anp$THH),
-        min(tasa_cambio_clase_mi_anp_ring$THH)), 
-        max(quantile(tasa_cambio_clase_cl$THH, 0.8), 
-            max(tasa_cambio_clase_mi_anp$THH),
-            max(tasa_cambio_clase_mi_anp_ring$THH)))
+    facet_wrap(~clase_madmex) 
 
 vars_tooltip <- c("ANP", "año", "THH", "perdida_ha")
 p1 <- ggplotly(tasa_cambio_plot, tooltip = vars_tooltip, 
-                 dynamicTicks = TRUE)
+                 dynamicTicks = FALSE)
 p2 <- ggplotly(tasa_cambio_clase_plot, tooltip = vars_tooltip, 
-                 dynamicTicks = TRUE)
-subplot(style(p1, traces = 1:3, showlegend = FALSE), p2, margin = 0.03)
+                 dynamicTicks = FALSE)
 ```
+
+```{r plot_tth}
+subplot(style(p1, traces = 1:5, showlegend = FALSE), p2, margin = 0.03)
+```
+
 
 Con el fin de comparar el grado de pérdida boscosa entre las ANPs de una misma 
 región CONANP construímos un índice de pérdida forestal, el índice considera la
@@ -595,19 +558,16 @@ pérdida por ecorregión. Esto es porque es razonable considerar
 que algunas ecorregiones sean sujetas a mayor amenaza de pérdida forestal que otras. 
 
 ```{r}
-load("../datos_procesados/2017-10-22_perdida_cobertura.RData")
-
-indice_deforestacion <- perdida_anps_df %>% 
-    # mutate(anp = stringr::str_replace(anp, "anp_terrestres_2017_NOMBRE_", "")) %>% 
-    mutate(ultimos_5 = year_loss > 11) %>% 
+indice_deforestacion <- madmex_cobertura %>% 
+    filter(tipo_id == 1) %>% 
+    mutate(ultimos_5 = anio_perdida > 2012) %>% 
     group_by(anp) %>% 
     mutate(hectareas = sum(n)) %>% 
     group_by(anp, ultimos_5) %>% 
     summarise(deforestacion = sum(n) / first(hectareas) * 100) %>% 
     ungroup() %>% 
     filter(ultimos_5) %>% 
-    left_join(anp_eco_df, by = "anp") %>% 
-    select(-ultimos_5, -hectareas, -p_area_eco) %>% 
+    left_join(select(manejo_ha_anp, anp, eco), by = "anp") %>% 
     group_by(eco) %>% 
     mutate(
         deforestacion_eco = mean(deforestacion),
@@ -644,7 +604,7 @@ Una vez que calculamos el promedio de pérdida en cada ecorregión construimos
 el índice como la diferencia entre la pérdida de cada ANP y la pérdida promedio
 en la ecorregión a la que pertenece, es así que si una ANP ocurrió más 
 pérdida boscosa que en el promedio de su ecorregión, el índice tomará un valor 
-positivo. La gráfica de abajo indica el valor de los índices para todas las ANPs
+positivo. La gráfica de abajo indica el valor de los índices para todas las ANP
 de la región *`r mis_region`*.
 
 <div style="clear:both">
@@ -669,25 +629,11 @@ ggplot(indice_deforestacion_cl,
   
 ```
 
-```{r, eval = FALSE, echo=FALSE}
-ggplot(indice_deforestacion_cl, 
-    aes(x = reorder(anp_corto, ind_deforestacion), y = ind_deforestacion, label = eco, 
-        group = anp)) + 
-    geom_bar(stat = 'identity', aes(fill = eco), width = .5) +
-  labs(subtitle="Índice calculado por ecorregión", 
-       title= "Deforestación en la región", x = "", y = "", fill = "") + 
-  coord_flip()
-```
-
-
 ### Integridad y ACE
 
 #### Integridad ecosistémica
 
-La integridad ecosistémica se reporta mediante un índice construído en colaboración
-de CONABIO e INECOL. Este índice relaciona de manera integral varios aespectos 
-de la biodiversidad a través de modelos llamados redes bayesianas. Estos modelos
-representan complejas relaciones intercruzadas entre variables descriptoras de los ecosistemas como lo son el tamaño y la cantidad de árboles presentes, y variables contextuales como lo son el clima y la topografía. Con base en esto, los modelos arrojan un predicción sobre el estado actual de los ecosistemas a lo largo del territorio nacional.
+La integridad ecosistémica se reporta mediante un índice construído por la CONABIO en colaboración con el INECOL, A.C.. Este índice relaciona de manera integral varios aespectos de la biodiversidad a través de modelos llamados redes bayesianas. Estos modelos representan relaciones intercruzadas entre variables descriptoras de los ecosistemas como lo son el tamaño y la cantidad de árboles presentes, imagenes satelitales y variables contextuales como lo son el clima y la topografía. Con base en esto, los modelos arrojan un predicción sobre el estado actual de los ecosistemas a lo largo del territorio nacional.
 
 Para este reporte se trabajó con el mapa de integridad ecosistémica de 2014, 
 con una resolución de 250 m^2^, el índice de integridad está estandarizado de 
@@ -727,7 +673,9 @@ pal <- colorQuantile(palette = c("RdYlGn"), domain = NULL, n = 6,
 # pal <- colorNumeric(
 #   palette = "RdYlGn",
 #   domain = c(0, 1), na.color = "transparent")
+```
 
+```{r plot_integridad}
 leaflet(data = mi_anp_shp) %>%
     addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
         opacity = 1.0, fillOpacity = 0.2) %>%
@@ -738,33 +686,13 @@ leaflet(data = mi_anp_shp) %>%
         addLegend("bottomright", pal = pal, values = c(0, 1),
             title = "IE (2014)", opacity = 1)
 ```
+
+
 </br>
 
-```{r stats_ie}
-load("../datos_procesados/2017-10-12_ie_list.RData")
-
-ie_stats <- map_df(ie_list, ~data_frame(anp = .$anp, media = .$media, 
-    mediana = .$mediana, desv.est = .$desv.est)) %>% 
-    mutate(
-        anp = str_replace(anp, "anp_terrestres_2017_NOMBRE_", ""), 
-        anp_corto = str_sub(anp, start = 1, end = 20)
-    )
-
-mi_anp_ie_stats <- filter(ie_stats, anp == mi_anp)
-```
-
-El mapa de arriba nos da un panorama de la integridad en la ANP *`r mi_anp_print`*, que
-tiene una media de integridad de `r round(mi_anp_ie_stats$media, 2)` y una desviación estándar
-de `r round(mi_anp_ie_stats$desv.est, 2)`. La gráfica de abajo busca contextualizar estos 
-números comparando los valores integridad de *`r mi_anp_print`* con los correspondientes a otras
-ANPs en la misma ecorregión y con los valores en los anillos.
-
-
-<div style= "float:left;position: relative; top: -10px;">
-
-```{r ie_boxplot, fig.width = 4.5, fig.height=6}
-load("../datos_procesados/2017-10-12_ie_list.RData")
-
+```{r}
+ie_stats <- read_csv("../datos_procesados/2018-07-27_ie_stats.csv")
+ie_samples <- read_csv("../datos_procesados/2018-07-27_ie_list_valores_anp.csv")
 # ie_samples <- map_df(ie_list, ~data_frame(anp = .$anp, ie_pixeles = .$valores)) %>% 
 #     mutate(
 #         anp = str_replace(anp, "anp_terrestres_2017_NOMBRE_", ""), 
@@ -773,70 +701,50 @@ load("../datos_procesados/2017-10-12_ie_list.RData")
 #         ) %>% 
 #     filter(anp %in% mis_anps) 
 
-ie_samples <- map_df(ie_list, ~data_frame(anp = .$anp, ie_pixeles = .$valores)) %>% 
+mis_ie_samples <- ie_samples %>% 
+    filter(anp %in% mis_anps_eco, tipo_id == 1)  %>% 
+    left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
     mutate(
-        anp = str_replace(anp, "anp_terrestres_2017_NOMBRE_", "")
-        ) %>% 
-    left_join(anp_nombres, by = "anp") %>% 
-    mutate(
-        clase = ifelse(anp_sin_acentos == mi_anp, mi_anp_corto, "otras")
-    ) %>% 
-    filter(anp_sin_acentos %in% mis_anps) 
+        clase = case_when(anp == mi_anp ~ mi_anp_corto, TRUE ~ "otras")
+        ) 
+mis_ie_stats <- ie_stats %>% 
+    filter(anp %in% mis_anps_eco, tipo_id != 1)  %>% 
+    left_join(anp_nombres, by = c("anp" = "anp_sin_acentos")) %>% 
+        mutate(
+            clase = case_when(
+                tipo_id == 2 ~ "periferia",
+                tipo_id == 3 ~ "z.núcleo",
+                tipo_id == 4 ~ "z.preservación"
+            ) 
+        )
 
-ie_samples_median <- ie_samples %>% 
-    group_by(anp_corto) %>% 
-    summarise(mediana_muestras = median(ie_pixeles))
+mi_anp_ie_stats <- ie_stats %>% 
+    filter(anp == mi_anp, tipo_id == 1)
+```
 
-ie_stats <- map_df(ie_anillos_list, ~ data_frame(anp = .$anp, media = .$media,
-    mediana = .$mediana, desv.est = .$desv.est)) %>%     
-    mutate(
-        anp = str_replace(str_replace(anp, "anp_terrestres_2017_NOMBRE_", ""),
-            "_ring", "")
-        ) %>% 
-    left_join(anp_nombres, by = "anp") %>% 
-    select(anp, anp_corto, mediana_anillo = mediana, media_anillo = media, 
-        desv.est_anillo = desv.est) %>% 
-    filter(anp_corto %in% unique(ie_samples$anp_corto)) %>% 
-    left_join(ie_samples_median, by = c("anp_corto"))
 
+El mapa de arriba nos da un panorama de la integridad en la ANP *`r mi_anp_print`*, que
+tiene una media de integridad de `r round(mi_anp_ie_stats$media, 2)` y una desviación estándar
+de `r round(mi_anp_ie_stats$desv_est, 2)`. La gráfica de abajo busca contextualizar estos 
+números comparando los valores integridad de *`r mi_anp_print`* con los correspondientes a otras
+ANP en la misma ecorregión y con los valores en los anillos.
+
+
+<div style= "float:left;position: relative; top: -10px;">
+
+```{r ie_boxplot, fig.width = 4.5, fig.height=6}
+    
 ie_boxplot <- ggplot() +
     coord_flip() +
-    geom_boxplot(data = ie_samples, aes(x = reorder(anp_corto, ie_pixeles, median),
-        y = ie_pixeles, color = clase), alpha = 0.6, show.legend = FALSE, 
+    geom_boxplot(data = mis_ie_samples, aes(x = reorder(anp_corto, valores, median),
+        y = valores, color = clase), alpha = 0.6, show.legend = FALSE, 
         outlier.color = "gray90", coef = 0) +
     scale_color_manual("", values = escala_color) +
-    geom_point(data = ie_stats, aes(x = reorder(anp_corto, mediana_muestras), 
-        y = mediana_anillo), color = "blue", alpha = 0.8) +
+    geom_point(data = mis_ie_stats, aes(x = anp_corto, y = mediana, 
+        color = clase), alpha = 0.8) +
     labs(x = ",", title = "Integridad Ecosistémica", y = "")
 
 ie_boxplot
-
-# ie_stats_por_anp <- readr::read_csv("../datos_procesados/integridad/ie_stats_por_anp.csv")
-# ie_stats_por_anp_rings <- readr::read_csv("../datos_procesados/integridad/ie_stats_por_anp_rings.csv")
-
-
-# ie_stats_anp <- ie_stats_por_anp_rings %>% 
-#     rename(filename_ring = filename, mean_ring = mean, sd_ring = sd) %>% 
-#     mutate(
-#         anp = str_replace(anp, "_ring", ""), 
-#         clase = ifelse(anp == mi_anp, mi_anp,  # quedaría mejor con case_when
-#             ifelse(anp == str_c(mi_anp, "_ring"), "anillo", "otras"))
-#         ) %>% 
-#     filter(anp %in% mis_anps) %>% 
-#     left_join(ie_stats_por_anp) %>% 
-#     mutate(
-#         media = round(mean, 2), 
-#         media_anillo = round(mean_ring, 2), 
-#         desv.est = round(sd, 2)
-#     )
-# ie_anp <- ggplot(ie_stats_anp, aes(x = media, y = media_anillo, 
-#     label = anp, color = clase, size = desv.est)) + 
-#     geom_abline(alpha = 0.8, color = "red") +
-#     geom_point(alpha = 0.5) +
-#     scale_color_manual("",values = escala_color) +
-#     labs(x = "ANP", y = "anillo ANP", size = "", 
-#         title = "Integridad Ecosistémica (medias)")
-# ggplotly(ie_anp, tooltip = c("label", "x", "y", "size"))
 ```
 </div>
 
@@ -848,7 +756,7 @@ la muestra.
 
 - La **mediana** de la integridad de las ANPs está representada por las líneas 
 que dividen las cajas, si queremos pensar en un único valor para caracterizar la 
-integridad de una ANP podemos usar la mediana, con esto en mente las ANPs con mayor 
+integridad de una ANP podemos usar la mediana, con esto en mente las ANP con mayor 
 integridad ecosistémica son las primeras y conforme descendemos en la gráfica
 disminuye la integridad.
 
@@ -921,40 +829,20 @@ leaflet(data = mi_anp_shp) %>%
 ```
 
 
-### Puma: ideoneidad de hábitat
+### Fauna
 
 La idoneidad de hábitat se refiere a las condiciones locales de preferencia del 
 *Puma concolor*. Se utilizan registros georreferidos del SNMB obtenidos a partir 
-de fototrampeo, huellas, excretas, registros fotográficos y grabadoras, del 
-SNIB (Sistema Nacional de Información de la Biodiversidad) base de datos de 
-CONABIO, y de la plataforma de Naturalista.
+de fototrampeo, huellas, excretas, registros fotográficos, del 
+SNIB (Sistema Nacional de Información de la Biodiversidad, COBANIO) y los registros 
+de la plataforma de Naturalista en vida libre.
 
 El año del registro es importante para asociarlo con la condición del sitio en 
 el año que fue observado o capturado. Todos los registros de la especie de 
 interés se relacionan espacio-temporalmente con las coberturas de hábitat como, 
 la estructura de la vegetación (INFyS) y las obtenidas de imágenes por 
-percepción remota (Land Sat). Así son asociadas al año correspondiente a los 
-registros.
+percepción remota (Land Sat).
 
-Vale la pena mencionar que se obtienen previamente coberturas ambientales 
-anuales por lo que aunque todos los registros del periodo completo (2004 al 
-2014 en este caso) ayudan por un lado a caracterizar el nicho ecológico con la 
-mayor información disponible de la especie, por otro lado es así factible, 
-reproyectar dichas condiciones al espacio geográfico anualmente. 
-
-Dentro del modelo desarrollado se seleccionan las variables ambientales que 
-muestran mejor desempeño en los modelos y que además están menos correlacionadas 
-entre ellas. Así es como todas las combinaciones de las variables de hábitat se 
-modelan con base en un elipsoide de tres dimensiones. Se crea la caracterización 
-del nicho ambiental del hábitat de cada especie. 
-
-La razón de usar los elipsoides como aproximación geométrica del nicho ecológico 
-se sustenta en los trabajos teóricos y experimentales que proponen que la forma 
-de los nichos es convexa y que se asemeja a un elipsoide (Birch, 1953; Maguire, 
-1967; Hooper et al, 2008; Angilletta, 2009; Soberón & Nakamura, 2009; Soberón & 
-Peterson, 2011; Qiao et al, 2016). Así el centro del elipsoide es una 
-aproximación de las mejores condiciones por lo que representan las regiones con 
-la mejor calidad o idoneidad de hábitat en este caso del Puma.
 
 El siguiente mapa nos muestra las variaciones en la idoneidad dentro de la ANP
 `r mi_anp_print` para el año 2014.
@@ -977,8 +865,6 @@ leaflet(data = mi_anp_shp) %>%
     addRasterImage(anp_suit, color = pal, opacity = 1) %>% 
     addLegend("bottomright", pal = pal, values = c(0, 1), title = "IH (2014)", 
         opacity = 1)
-
-
 ```
 
 ```{r}
@@ -1007,45 +893,33 @@ los años 2005 a 2014. Los puntos azules corresponden a la idoneidad en el
 anillo circundante a la ANP.
 
 ```{r, fig.width=4, fig.height=3}
+load("../datos_procesados/2018-08-24_suitabilility_report.RData")
 
-load(file = "../datos_procesados/2018-02-12_suitability.Rdata")
-load(file = "../datos_procesados/2018-02-12_suitability_rings.RData")
+mi_tabla_suit_anp <- tabla_suit %>% 
+    filter(anp == mi_anp) 
 
-tabla_suit_l <- tabla_suit %>% 
-    as_tibble() %>% 
-    filter(anp == mi_anp) %>% 
-    gather(anio, suit, -anp, -x, -y) %>% 
+mi_ih_stats <- suit_stats %>%
+    ungroup() %>% 
+    filter(anp == mi_anp, tipo != "ANP") %>% 
     mutate(
-        anio = readr::parse_number(anio), 
-        id = str_c(x, y, sep = "-")
-        ) %>% 
-    filter(anio > 2004)
+        clase = case_when(
+            tipo == "anillo" ~ "periferia",
+            tipo == "núcleo" ~ "z.núcleo",
+            tipo == "preservación" ~ "z.preservación"
+        )
+    )
 
-tabla_suit_rings_l <- tabla_suit_rings %>% 
-    as_tibble() %>% 
-    filter(anp == str_c(mi_anp, "_ring")) %>% 
-    gather(anio, suit, -anp, -x, -y) %>% 
-    mutate(
-        anio = readr::parse_number(anio), 
-        id = str_c(x, y, sep = "-")
-        ) %>% 
-    filter(anio > 2004)
-
-mediana_rings <- tabla_suit_rings_l %>% 
-    group_by(anio) %>% 
-    summarise(mediana = median(suit, na.rm = TRUE))
-
-# graficamos boxplots por año con muestra de tamaño 1000, mismos pixeles
-coords_sample <- sample(unique(tabla_suit_l$id), size = min(1000, 
-    n_distinct(tabla_suit_l$id)))
-
-filter(tabla_suit_l, id %in% coords_sample) %>% 
-ggplot(aes(x = factor(anio), y = suit)) +
+escala_color_sin_anp <- c("#005b96", "#7CCD7C", "#AB82FF")
+names(escala_color_sin_anp) <- c("periferia", "z.núcleo", "z.preservación")
+plot_ih_anio <- ggplot(mi_tabla_suit_anp, aes(x = factor(anio), y = idoneidad)) +
     geom_boxplot(alpha = 0.6, show.legend = FALSE, 
         outlier.color = "gray90", coef = 0, color = "gray50") +
-    geom_point(data = mediana_rings, aes(x = factor(anio), y = mediana), 
-        color = "blue") +
-    labs(x = "año", y = "", title = "Idoneidad de hábitat")
+    geom_point(data = mi_ih_stats, aes(x = factor(anio), y = mediana, 
+        color = clase)) +
+    scale_color_manual("", values = escala_color_sin_anp) +
+    labs(x = "año", y = "", title = "Idoneidad de hábitat", color = "")
+
+ggplotly(plot_ih_anio)
 ```
 
 <!--
@@ -1151,42 +1025,61 @@ ie_boxplot
 # ggplotly(ie_anp, tooltip = c("label", "x", "y", "size"))
 ```
 
+Las coberturas ambientales se obtienen anualmente por lo que aunque todos
+los registros del *Puma concolor* del periodo completo (2004 al 2014 en este caso) 
+ayudan a caracterizar el nicho ecológico con la mayor información disponible de la especie, 
+es factible además reproyectar dichas condiciones al espacio geográfico anualmente 
+(hdm, R package).
+
+Del modelo desarrollado se seleccionan las variables ambientales que 
+muestran mejor desempeño en los modelos y que además están menos correlacionadas 
+entre ellas. Así es como todas las combinaciones de las variables de hábitat se 
+modelan con base en un elipsoide de tres dimensiones. Se crea la caracterización 
+del nicho ambiental del hábitat de cada especie. 
+
+La razón de usar los elipsoides como aproximación geométrica del nicho ecológico 
+se sustenta en los trabajos teóricos y experimentales que proponen que la forma 
+de los nichos es convexa y que se asemeja a un elipsoide (Birch, 1953; Maguire, 
+1967; Hooper et al, 2008; Angilletta, 2009; Soberón & Nakamura, 2009; Soberón & 
+Peterson, 2011; Qiao et al, 2016). Así el centro del elipsoide es una 
+aproximación de las mejores condiciones por lo que representan las regiones con 
+la mejor calidad o idoneidad de hábitat en este caso del Puma.
+
 
 Los diagramas de caja y brazos del abajo buscan comparar la idoneidad de 
 hábitat para el *Puma concolor* a lo largo de las ANPs que pertenecen a la región 
-CONANP `r mis_region`.
+CONANP `r mi_region`.
 
 ```{r ih_boxplot_2, fig.width = 4.5, fig.height=6}
-load(file = "../datos_procesados/2018-02-12_suitability.Rdata")
-load(file = "../datos_procesados/2018-02-12_suitability_rings.RData")
+ih_stats_2014 <- suit_stats %>% 
+    ungroup() %>% 
+    filter(anio == 2014, tipo != "ANP", anp %in% mis_anps_region) %>% 
+    select(anp_sin_acentos = anp, mediana, tipo) %>% 
+    left_join(anp_nombres) %>% 
+    mutate(
+        clase = case_when(
+            tipo == "anillo" ~ "periferia",
+            tipo == "núcleo" ~ "z.núcleo",
+            tipo == "preservación" ~ "z.preservación"
+        )
+        ) 
 
-tabla_suit <- tabla_suit %>% 
-    select(anp_sin_acentos = anp, suit = anio_2014) %>% 
+tabla_suit_region <- tabla_suit %>% 
+    rename(anp_sin_acentos = anp) %>%
+    filter(anio == 2014, anp_sin_acentos %in% mis_anps_region) %>% 
     left_join(anp_nombres) %>% 
     mutate(
         clase = ifelse(anp_sin_acentos == mi_anp, mi_anp_corto, "otras")
-    ) %>% 
-    filter(anp_sin_acentos %in% mis_anps_region) 
-
-tabla_suit_rings_median <- tabla_suit_rings %>% 
-    mutate(anp_sin_acentos = stringr::str_replace(anp, "_ring", "")) %>% 
-    select(anp_sin_acentos, suit = anio_2014) %>% 
-    left_join(anp_nombres) %>% 
-    mutate(
-        clase = ifelse(anp_sin_acentos == mi_anp, mi_anp_corto, "otras")
-    ) %>% 
-    filter(anp_sin_acentos %in% mis_anps_region) %>% 
-    group_by(anp_corto) %>% 
-    summarise(mediana_anillo = median(suit))
+    ) 
 
 ie_boxplot <- ggplot() +
     coord_flip() +
-    geom_boxplot(data = tabla_suit, aes(x = reorder(anp_corto, suit, median),
-        y = suit, color = clase), alpha = 0.6, show.legend = FALSE, 
+    geom_boxplot(data = tabla_suit_region, aes(x = reorder(anp_corto, idoneidad, 
+        median), y = idoneidad, color = clase), alpha = 0.6, show.legend = FALSE, 
         outlier.color = "gray90", coef = 0) +
     scale_color_manual("", values = escala_color) +
-    geom_point(data = tabla_suit_rings_median, aes(x = anp_corto, 
-        y = mediana_anillo), color = "blue", alpha = 0.8) +
+    geom_point(data = ih_stats_2014, aes(x = anp_corto, 
+        y = mediana, color = clase),  alpha = 0.8) +
     labs(x = ",", title = "Idoneidad de hábitat", y = "")
 
 ie_boxplot
@@ -1221,25 +1114,25 @@ ie_boxplot
 
 ### Referencias y materiales
 
+Angilletta, M. J. (2009) Thermal adaptation: a theoretical and empirical synthesis. Oxford Univ. Press.
+
+Birch, L. C. (1953) Experimental background to the study of the distribution and abundance of insects: III. The relation between innate capacity for increase and survival of different species of beetles living together on the same food. Evolution 7, pp. 136–144.
+
+Bryan C. Pijanowski, Luis J. Villanueva-Rivera, Sarah L. Dumyahn, Almo Farina, Bernie L. Krause, Brian M. Napoletano, Stuart H. Gage and Nadia Pieretti, Soundscape Ecology: The Science of Sound in the Landscape, BioScience, Vol. 61, No. 3 (March 2011), pp. 203-216, University of California Press on behalf of the American Institute of Biological Sciences
+
+Garcia-Alaniz, N.; Equihua, M.; Pérez-Maqueo O.;Equihua, J.;Pardo F.;Martínez, J.; Villela, S.; Schmidt, M., The Mexican National Biodiversity and Ecosystem Degradation Monitoring System, Current Opinion in Evironmental Sustainability, 2017, 26-27, 62–68.
+
 Gebhardt, S.; Wehrmann, T.; Ruiz, M.A.M.; Maeda, P.; Bishop, J.; Schramm, M.; Kopeinig, R.; Cartus, O.; Kellndorfer, J.; Ressl, R.; Santos, L.A.; Schmidt, M.	MAD-MEX: Automatic Wall-to-Wall Land Cover Monitoring for the Mexican REDD-MRV Program Using All Landsat Data. Remote Sens. 2014, 6, 3923-3943.
 
 Gebhardt, S.; Maeda, P.; Wehrmann, T.; Argumedo, J.; A PROPER LAND COVER AND FOREST TYPE CLASSIFICATION SCHEME FOR
 MEXICO. The International Archives of the Photogrammetry, Remote Sensing and Spatial Information Sciences, Volume XL-7/W3, 2015
 36th International Symposium on Remote Sensing of Environment, 11–15, May 2015, Berlin, Germany.
 
-Garcia-Alaniz, N.; Equihua, M.; Pérez-Maqueo O.;Equihua, J.;Pardo F.;Martínez, J.; Villela, S.; Schmidt, M., The Mexican National Biodiversity and Ecosystem Degradation Monitoring System, Current Opinion in Evironmental Sustainability, 2017, 26-27, 62–68.
-
 Hansen, M. C., P. V. Potapov, R. Moore, M. Hancher, S. A. Turubanova, A. Tyukavina, D. Thau, S. V. Stehman, S. J. Goetz, T. R. Loveland, A. Kommareddy, A. Egorov, L. Chini, C. O. Justice, and J. R. G. Townshend. 2013. “High-Resolution Global Maps of 21st-Century Forest Cover Change.” Science 342 (15 November): 850–53.
 
-Bryan C. Pijanowski, Luis J. Villanueva-Rivera, Sarah L. Dumyahn, Almo Farina, Bernie L. Krause, Brian M. Napoletano, Stuart H. Gage and Nadia Pieretti, Soundscape Ecology: The Science of Sound in the Landscape, BioScience, Vol. 61, No. 3 (March 2011), pp. 203-216, University of California Press on behalf of the American Institute of Biological Sciences
+Hooper, H. L. et al. (2008) The ecological niche of Daphnia magna characterized using population growth rate. Ecology 89, pp. 1015–1022.
 
 Landsat imagery, NASA Land Processes Distributed Active Archive Center (LP DAAC) Products,These data are distributed by the Land Processes Distributed Active Archive Center (LP DAAC), located at USGS/EROS, Sioux Falls, SD. http://lpdaac.usgs.gov
-
-Angilletta, M. J. (2009) Thermal adaptation: a theoretical and empirical synthesis. Oxford Univ. Press.
-
-Birch, L. C. (1953) Experimental background to the study of the distribution and abundance of insects: III. The relation between innate capacity for increase and survival of different species of beetles living together on the same food. Evolution 7, pp. 136–144.
-
-Hooper, H. L. et al. (2008) The ecological niche of Daphnia magna characterized using population growth rate. Ecology 89, pp. 1015–1022.
 
 Maguire, Jr., B. (1973). Niche Response Structure and the Analytical Potentials of Its Relationship to the Habitat. The American Naturalist. http://doi.org/10.1086/282827
 
