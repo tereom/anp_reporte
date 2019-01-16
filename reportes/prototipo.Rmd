@@ -22,6 +22,7 @@ library(maptools)
 library(kableExtra)
 library(plotly)
 library(leaflet)
+library(leaflet.extras)
 library(tidyr)
 library(readr)
 
@@ -157,7 +158,6 @@ la ANP. Por tanto, en los siguientes análisis se compararán los
 indicadores de las ANPs asignadas a la ecorregión `r mi_eco` y si es posible
 de tamaño similar.
 
-```
 #### Anillos, Zonas núcleo y Zonas de Preservación
 
 Adicional a la comparación con otras ANP comparamos los distintos indicadores dentro de las ANP los equivalentes alrededor de las mismas, para esto se definieron los anillos como el área de los 25 km circundantes a cada ANP, así como en Zonas núcleo y Zonas de preservación si las ANP las presentan.
@@ -295,15 +295,30 @@ colores_madmex <- c('#b2df8a', '#33a02c', '#fb9a99', '#e31a1c', '#fdbf6f',
 pal <- colorFactor(palette = colores_madmex, domain = 1:10, na.color = "transparent")
 
 leaflet(data = mi_anp_shp) %>% 
-    addPolygons(color = "#eef3f4", weight = 1.5, smoothFactor = 0.5,
-        opacity = 1.0, fillOpacity = 0.2) %>% 
-#         addTiles() %>%
+    # addPolygons(color = "black", weight = 1.5, smoothFactor = 0.5,
+    #     opacity = 1.0, fillOpacity = 0) %>% 
         fitBounds(lng1 = ext@xmin, lat1 = ext@ymin, lng2 = ext@xmax, 
             lat2 = ext@ymax) %>% 
         addProviderTiles(providers$Esri.WorldImagery) %>% 
-        addWMSTiles("http://www.conabio.gob.mx/informacion/explorer/wms?Format=image/png&request=GetMap&version=1.1.1",
-            layers = "spt1mgw", group = "GAP", 
-            options = WMSTileOptions(format = "image/png", transparent = TRUE)) 
+        addWMSTiles("https://monitoreo.conabio.gob.mx/geoserver/geoportal/wms",
+            layers = "mex_RE_2015_17_clases",
+            options = WMSTileOptions(format = "image/png", transparent = TRUE)
+        ) %>% 
+    addWMSTiles("https://monitoreo.conabio.gob.mx/geoserver/geoportal/wms",
+            layers = "mex_ANPTerr175_2017",
+            options = WMSTileOptions(format = "image/png", transparent = TRUE, 
+                opacity = 0.5)
+        ) %>% 
+    addWMSLegend(
+        uri = paste0('https://monitoreo.conabio.gob.mx/geoserver/geoportal/wms?',
+            'REQUEST=GetLegendGraphic&VERSION=1.0.0', 
+            '&FORMAT=image/png&LAYER=workspace:mex_RE_2015_17_clases'))
+
+    # código GAPs
+        # addWMSTiles("http://www.conabio.gob.mx/informacion/explorer/wms?Format=image/png&request=GetMap&version=1.1.1",
+        #     layers = "spt1mgw", group = "GAP", 
+        #     options = WMSTileOptions(format = "image/png", transparent = TRUE)) 
+             
         # addWMSTiles(
         # "http://webportal.conabio.gob.mx:8085/geoserver/MEX_IE3C_250m/wms?",
         #     layers = "MEX_IE3C_250m:ie3c_2014_250m",
