@@ -52,10 +52,21 @@ manejo_ha_anp <- read_csv("../datos_procesados/2019-01-15_manejo_ha_extent_anp.c
 mi_anp <- params$mi_anp
 mi_anp_nombres <- anp_nombres %>% 
     filter(anp_sin_acentos == mi_anp)
+mi_anp_id_07 <- manejo_ha_anp$id_07[manejo_ha_anp$anp == mi_anp]
 mi_anp_corto <- mi_anp_nombres$anp_corto
 mi_anp_print <- str_replace_all(mi_anp_nombres$anp, "_", " ")
 mis_anps_eco <- obtener_anps(mi_anp)
 ```
+
+```{r}
+estilos <- rjson::fromJSON(file = "../datos_insumo/spatial_layers_styles.json")
+estilos_df <- estilos %>% 
+    flatten() %>% 
+    map_df(~tibble(layer = .$layer, labels = list(.$data_labels), 
+        colors = list(.$colors)))
+rm(estilos)
+```
+
 
 ## ANP `r mi_anp_print ` {.tabset}
 
@@ -123,10 +134,10 @@ anp_eco_table %>%
     # group_rows("Selvas Cálido-Húmedas", label_row_css = "color: #79797d;", 1, 37)
 ```
 
-A lo largo del reporte los indicadores del área natural protegida (ANP) objetivo se comparan con los 
-indicadores de otras ANP de la misma ecorregión, esto se hace para poder 
-contextuaizar los valores obtenidos. Utilizamos la definición de ecorregión del 
-mapa de [Ecorregiones terrestres de México (2008)](http://www.conabio.gob.mx/informacion/metadata/gis/ecort08gw.xml?_xsl=/db/metadata/xsl/fgdc_html.xsl&_indent=no) 
+A lo largo del reporte los indicadores del área natural protegida (ANP) objetivo 
+se comparan con los indicadores de otras ANP de la misma ecorregión, esto se 
+hace para poder contextuaizar los valores obtenidos. Utilizamos la definición de 
+ecorregión del mapa de [Ecorregiones terrestres de México (2008)](http://www.conabio.gob.mx/informacion/metadata/gis/ecort08gw.xml?_xsl=/db/metadata/xsl/fgdc_html.xsl&_indent=no) 
 elaborado por INEGI, CONABIO e INE.
 
 La tabla de abajo indica para cada ecorregión cuántas hectáreas hay en ANP y el 
@@ -290,12 +301,12 @@ que pertence a cada clase de acuerdo al mapa 2010.
 Veamos la composición espacial de las clases en la ANP *`r mi_anp_print`*.
 
 ```{r madmex_map}
-colores_madmex <- c("#4d642d", "#4cb974", "#e59f26", "#e0b762", "#9c9877", 
-    "#b4b8bc", "#3f2f21", "#2eccfa")
 xmin <- mi_eco_info$xmin
 xmax <- mi_eco_info$xmax
 ymin <- mi_eco_info$ymin
 ymax <- mi_eco_info$ymax
+
+estilos_madmex <- filter(estilos_df, layer == "mex_RE_2015_8_clases")
 
 leaflet() %>% 
     fitBounds(lng1 = xmin, lat1 = ymin, lng2 = xmax, lat2 = ymax) %>% 
@@ -304,7 +315,7 @@ leaflet() %>%
     addWMSTiles("https://monitoreo.conabio.gob.mx/geoserver/geoportal/wms",
         layers = "mex_RE_2015_8_clases",
         options = WMSTileOptions(format = "image/png", transparent = TRUE), 
-        group = "MAD-MEX"
+        group = "Capa"
         ) %>%
     addWMSTiles("https://monitoreo.conabio.gob.mx/geoserver/geoportal/wms",
         layers = "mex_ANPTerr175_2017",
@@ -332,24 +343,19 @@ leaflet() %>%
          layers = "LocPob2500", group = "Loc 2500",
          options = WMSTileOptions(format = "image/png", transparent = TRUE)
         ) %>%
-    #     # addWMSTiles(
-    #     # "http://webportal.conabio.gob.mx:8085/geoserver/MEX_IE3C_250m/wms?",
-    #     #     layers = "MEX_IE3C_250m:ie3c_2014_250m",
-    #     #     options = WMSTileOptions(format = "image/png", transparent = TRUE)
-    #     # ) %>% 
-    addLegend("bottomright", values = 1:10, colors = colores_madmex,
-        title = "MAD-MEX (2015)", labels = c("bosque templado", "selva", 
-            "matorral", "vegetación menor y pastizales", "tierras agrícolas", 
-            "urbano y construido", "suelo desnudo", "agua"), opacity = 1) %>%
+    addLegend("bottomright", colors = estilos_madmex$colors[[1]],
+        title = "MAD-MEX (2015)", labels = estilos_madmex$labels[[1]], 
+        opacity = 1, group = "leyenda") %>%
     addLayersControl(
-        baseGroups = c("MAD-MEX", "Terreno"),
-        overlayGroups = c("ANP", "GAP", "Loc 2500", "Periferia", "Núcleo-Pres."),
+        baseGroups = c("Capa", "Terreno"),
+        overlayGroups = c("leyenda", "ANP", "GAP", "Loc 2500", "Periferia", 
+            "Núcleo-Pres."),
         options = layersControlOptions(collapsed = FALSE)
         )  %>%
     hideGroup("GAP") %>% 
     hideGroup("Loc 2500") %>% 
     hideGroup("Periferia") %>% 
-    hideGroup("Núcleo-Pres.")
+    hideGroup("Núcleo-Pres.") 
 ```
 
 
@@ -365,6 +371,8 @@ El siguiente mapa muestra en rojo las zonas que se identificaron como pérdida d
 cobertura forestal en los últimos 5 años de datos, esto es entre 2012 y 2017.
 
 ```{r hansen}
+estilos_hansen <- filter(estilos_df, layer == "mex_LSperdida_2001_2017")
+
 leaflet() %>% 
     fitBounds(lng1 = xmin, lat1 = ymin, lng2 = xmax, lat2 = ymax) %>% 
     addProviderTiles(providers$Esri.WorldImagery) %>% 
@@ -372,7 +380,7 @@ leaflet() %>%
     addWMSTiles("https://monitoreo.conabio.gob.mx/geoserver/geoportal/wms",
         layers = "mex_LSperdida_2001_2017",
         options = WMSTileOptions(format = "image/png", transparent = TRUE), 
-        group = "Pérdida"
+        group = "Capa"
         ) %>%
     addWMSTiles("https://monitoreo.conabio.gob.mx/geoserver/geoportal/wms",
         layers = "mex_ANPTerr175_2017",
@@ -389,7 +397,6 @@ leaflet() %>%
         options = WMSTileOptions(format = "image/png", transparent = TRUE, 
         opacity = 0.3), group = "Periferia"
         ) %>% 
-
     addWMSTiles("https://monitoreo.conabio.gob.mx/geoserver/reportes/wms",
         layers = "GapPriorExtrema", group = "GAP",
         options = WMSTileOptions(format = "image/png", transparent = TRUE)) %>%
@@ -397,13 +404,13 @@ leaflet() %>%
          layers = "LocPob2500", group = "Loc 2500",
          options = WMSTileOptions(format = "image/png", transparent = TRUE)
         ) %>%
-    # addLegend("bottomright", values = 1:10, colors = colores_madmex,
-    #     title = "MAD-MEX (2015)", labels = c("bosque templado", "selva", 
-    #         "matorral", "vegetación menor y pastizales", "tierras agrícolas", 
-    #         "urbano y construido", "suelo desnudo", "agua"), opacity = 1) %>%
+    addLegend("bottomright", colors = estilos_hansen$colors[[1]],
+        title = "Pérdida", labels = estilos_hansen$labels[[1]], 
+        opacity = 1, group = "leyenda") %>%
     addLayersControl(
-        baseGroups = c("Pérdida", "Terreno"),
-        overlayGroups = c("ANP", "GAP", "Loc 2500", "Periferia", "Núcleo-Pres."),
+        baseGroups = c("Capa", "Terreno"),
+        overlayGroups = c("leyenda", "ANP", "GAP", "Loc 2500", "Periferia", 
+            "Núcleo-Pres."),
         options = layersControlOptions(collapsed = FALSE)
         )  %>%
     hideGroup("GAP") %>% 
@@ -705,18 +712,13 @@ manera que toma valores entre 0 y 1, donde 1 es el mayor valor de integridad.
 
 
 ```{r ie_map, eval=TRUE}
-colores_ie <- c("#ff0000", "#e82927", "#f98939", "#fec981", "#ffedab", 
-    "#ecf7ad", "#c4e687", "#97d265", "#50a14a", "#0c461d")
-etiquetas_ie <- c("0.0 - 0.1", "0.1 - 0.2", "0.2 - 0.3", "0.3 - 0.4", 
-    "0.4 - 0.5", "0.5 - 0.6", "0.6 - 0.7", "0.7 - 0.8", "0.8 - 0.9", 
-    "0.9 - 1.0")
-
+estilos_ie <- filter(estilos_df, layer == "mex_ie_2014_250m")
 leaflet() %>% 
     addProviderTiles(providers$Esri.WorldImagery) %>% 
     addWMSTiles("https://monitoreo.conabio.gob.mx/geoserver/geoportal/wms",
         layers = "mex_ie_2014_250m",
         options = WMSTileOptions(format = "image/png", transparent = TRUE), 
-        group = "Integridad"
+        group = "Capa"
         ) %>%
     fitBounds(lng1 = xmin, lat1 = ymin, lng2 = xmax, lat2 = ymax) %>% 
     addProviderTiles(providers$Esri.WorldImagery, group = "Terreno") %>% 
@@ -743,11 +745,13 @@ leaflet() %>%
          layers = "LocPob2500", group = "Loc 2500",
          options = WMSTileOptions(format = "image/png", transparent = TRUE)
         ) %>%
-    addLegend("bottomright", values = 1:10, colors = colores_ie,
-        title = "IE", labels = etiquetas_ie, opacity = 1) %>%
+    addLegend("bottomright", colors = estilos_ie$colors[[1]],
+        title = "IE", labels = estilos_ie$labels[[1]], 
+        opacity = 1, group = "leyenda") %>%
     addLayersControl(
-        baseGroups = c("Integridad", "Terreno"),
-        overlayGroups = c("ANP", "GAP", "Loc 2500", "Periferia", "Núcleo-Pres."),
+        baseGroups = c("Capa", "Terreno"),
+        overlayGroups = c("leyenda", "ANP", "GAP", "Loc 2500", "Periferia",
+            "Núcleo-Pres."),
         options = layersControlOptions(collapsed = FALSE)
         )  %>%
     hideGroup("GAP") %>% 
@@ -857,14 +861,23 @@ interés se relacionan espacio-temporalmente con las coberturas de hábitat como
 la estructura de la vegetación (INFyS) y las obtenidas de imágenes por 
 percepción remota (Land Sat).
 
+```{r}
+secciones <- read_csv("../datos_insumo/puma_ponca_anps.csv") %>% 
+    filter(ID_07 == mi_anp_id_07) %>% 
+    mutate_if(is.numeric, funs(!is.na(.)))
+puma <- secciones$`Puma concolor`
+ponca <- secciones$`Panthera onca`
+```
+
+`r ifelse(puma, "
 #### Puma concolor
 
 El siguiente mapa nos muestra las variaciones en la idoneidad dentro de la ANP
-`r mi_anp_print` para el año 2014.
+para el año 2014.
+", "")`
 
-```{r, eval=TRUE}
-pal <- colorBin(palette = c("Oranges"), domain = c(1, 0), bins = 6,
-    na.color = "transparent", reverse = FALSE)
+```{r, eval=puma}
+estilos_ihpuma <- filter(estilos_df, layer == "mex_pconcolorB1suitability_2014")
 
 leaflet() %>%
     fitBounds(lng1 = xmin, lat1 = ymin, lng2 = xmax, lat2 = ymax) %>% 
@@ -873,7 +886,7 @@ leaflet() %>%
     addWMSTiles("https://monitoreo.conabio.gob.mx/geoserver/geoportal/wms",
         layers = "mex_pconcolorB1suitability_2014",
         options = WMSTileOptions(format = "image/png", transparent = TRUE), 
-        group = "IH Puma"
+        group = "Capa"
         ) %>% 
     addWMSTiles("https://monitoreo.conabio.gob.mx/geoserver/geoportal/wms",
         layers = "mex_ANPTerr175_2017",
@@ -897,9 +910,13 @@ leaflet() %>%
          layers = "LocPob2500", group = "Loc 2500",
          options = WMSTileOptions(format = "image/png", transparent = TRUE)
         ) %>%
+    addLegend("bottomright", colors = estilos_ihpuma$colors[[1]],
+        title = "IH Puma", labels = estilos_ihpuma$labels[[1]], 
+        opacity = 1, group = "leyenda") %>%
     addLayersControl(
-        baseGroups = c("IH Puma", "Terreno"),
-        overlayGroups = c("ANP", "GAP", "Loc 2500", "Periferia", "Núcleo-Pres."),
+        baseGroups = c("Capa", "Terreno"),
+        overlayGroups = c("leyenda", "ANP", "GAP", "Loc 2500", "Periferia", 
+            "Núcleo-Pres."),
         options = layersControlOptions(collapsed = FALSE)
         )  %>%
     hideGroup("GAP") %>% 
@@ -908,12 +925,13 @@ leaflet() %>%
     hideGroup("Núcleo-Pres.")
 ```
 
-
+`r ifelse(puma, "
 La siguiente gráfica nos muestra la distribución de la idoneidad a lo largo de 
 los años 2005 a 2014. Los puntos azules corresponden a la idoneidad de hábitat 
 para el puma en el anillo circundante a la ANP.
+", "")
 
-```{r, fig.width=4, fig.height=3, eval = TRUE}
+```{r, fig.width=4, fig.height=3, eval = puma}
 load("../datos_procesados/2018-08-24_suitabilility_report.RData")
 
 mi_tabla_suit_anp <- tabla_suit %>% 
@@ -988,7 +1006,7 @@ ggplot(tabla_suit_l, aes(x = anio, y = percentil_75)) +
     labs(x = "año", y = "", title = "Idoneidad de hábitat")
 ```
 
-```{r ih_boxplot, fig.width = 4.5, fig.height=6, include=FALSE, eval=TRUE}
+```{r ih_boxplot, fig.width = 4.5, fig.height=6, include=FALSE, eval=puma}
 load("../datos_procesados/2018-02-12_suitability.RData")
 
 tabla_suit_plot <- tabla_suit %>% 
@@ -1025,6 +1043,7 @@ ie_boxplot <- ggplot() +
 ie_boxplot
 ```
 
+`r ifelse(puma, "
 Las coberturas ambientales se obtienen anualmente por lo que aunque todos
 los registros del *Puma concolor* del periodo completo (2004 al 2014 en este 
 caso) 
@@ -1049,9 +1068,10 @@ la mejor calidad o idoneidad de hábitat en este caso del Puma.
 
 Los diagramas de caja y brazos del abajo buscan comparar la idoneidad de 
 hábitat para el *Puma concolor* a lo largo de las ANPs que pertenecen a la región 
-CONANP `r mi_region`.
+CONANP de la ANP.
+", "")`
 
-```{r ih_boxplot_2, fig.width = 4.5, fig.height=6, eval=TRUE}
+```{r ih_boxplot_2, fig.width = 4.5, fig.height=6, eval=puma}
 ih_stats_2014 <- suit_stats %>% 
     ungroup() %>% 
     filter(anio == 2014, tipo != "ANP", anp %in% mis_anps_region) %>% 
@@ -1086,14 +1106,16 @@ ie_boxplot <- ggplot() +
 ie_boxplot
 ```
 
+
+`r ifelse(ponca, "
 #### Panthera Onca
 
 El siguiente mapa nos muestra las variaciones en la idoneidad dentro de la ANP
-`r mi_anp_print` para el año 2014.
+para el año 2014.
+", "")`
 
-```{r, eval=TRUE}
-pal <- colorBin(palette = c("Oranges"), domain = c(1, 0), bins = 6,
-    na.color = "transparent", reverse = FALSE)
+```{r, eval=ponca}
+estilos_ihponca <- filter(estilos_df, layer == "mex_poncaB1suitability_2014")
 
 leaflet() %>%
     fitBounds(lng1 = xmin, lat1 = ymin, lng2 = xmax, lat2 = ymax) %>% 
@@ -1126,9 +1148,13 @@ leaflet() %>%
          layers = "LocPob2500", group = "Loc 2500",
          options = WMSTileOptions(format = "image/png", transparent = TRUE)
         ) %>%
+    addLegend("bottomright", colors = estilos_ihponca$colors[[1]],
+        title = "IH P.Onca", labels = estilos_ihponca$labels[[1]], 
+        opacity = 1, group = "leyenda") %>%
     addLayersControl(
-        baseGroups = c("IH Jaguar", "Terreno"),
-        overlayGroups = c("ANP", "GAP", "Loc 2500", "Periferia", "Núcleo-Pres."),
+        baseGroups = c("Capa", "Terreno"),
+        overlayGroups = c("leyenda", "ANP", "GAP", "Loc 2500", "Periferia", 
+            "Núcleo-Pres."),
         options = layersControlOptions(collapsed = FALSE)
         )  %>%
     hideGroup("GAP") %>% 
@@ -1137,11 +1163,13 @@ leaflet() %>%
     hideGroup("Núcleo-Pres.")
 ```
 
+`r ifelse(ponca, "
 La siguiente gráfica nos muestra la distribución de la idoneidad a lo largo de 
 los años 2005 a 2014. Los puntos azules corresponden a la idoneidad de hábitat 
-para el puma en el anillo circundante a la ANP.
+para la panthera onca en el anillo circundante a la ANP.
+", "")
 
-```{r, fig.width=4, fig.height=3, eval = TRUE}
+```{r, fig.width=4, fig.height=3, eval = ponca}
 load("../datos_procesados/2019-02-14_suitabilility_report_ponca.RData")
 
 mi_tabla_suit_anp <- tabla_suit %>% 
@@ -1171,51 +1199,8 @@ plot_ih_anio <- ggplot(mi_tabla_suit_anp, aes(x = factor(anio), y = idoneidad)) 
 ggplotly(plot_ih_anio)
 ```
 
-<!--
-Percentil 75 de idoneidad en la ANP y el anillo que la rodea. La línea roja 
-corresponde a la ANP y la 
-línea azúl al anillo.
--->
 
-```{r, fig.width=4, fig.height=3, echo=FALSE, eval=FALSE, error=TRUE}
-
-tabla_suit_l <- tabla_suit %>% 
-    as_tibble() %>% 
-    filter(anp == mi_anp) %>% 
-    gather(anio, suit, -anp, -x, -y) %>% 
-    mutate(
-        anio = readr::parse_number(anio), 
-        id = str_c(x, y, sep = "-")
-        ) %>% 
-    filter(anio > 2004) %>% 
-    group_by(anio) %>% 
-    summarise(percentil_75 = quantile(suit, probs = 0.75, na.rm = TRUE))
-
-tabla_suit_rings_l <- tabla_suit_rings %>% 
-    as_tibble() %>% 
-    filter(anp == str_c(mi_anp, "_ring")) %>% 
-    gather(anio, suit, -anp, -x, -y) %>% 
-    mutate(
-        anio = readr::parse_number(anio), 
-        id = str_c(x, y, sep = "-")
-        ) %>% 
-    filter(anio > 2004) %>% 
-    group_by(anio) %>% 
-    summarise(percentil_75 = quantile(suit, probs = 0.75, na.rm = TRUE))
-
-ggplot(tabla_suit_l, aes(x = anio, y = percentil_75)) +
-    geom_line(color = "red") +
-    geom_line(data = tabla_suit_rings_l, aes(x = anio, y = percentil_75), 
-        color = "blue") +
-    geom_text(data = tabla_suit_l, aes(x = anio[1], y = percentil_75[1]), 
-        label = "ANP", color = "red", hjust = 0, vjust = 0) +
-    geom_text(data = tabla_suit_rings_l, aes(x = anio[1], y = percentil_75[1]), 
-        label = "anillo", color = "blue", hjust = 0, vjust = 0) +
-    scale_x_continuous(breaks = 2005:2014) +
-    labs(x = "año", y = "", title = "Idoneidad de hábitat")
-```
-
-```{r ih_boxplot_ponca, fig.width = 4.5, fig.height=6, include=FALSE, eval=TRUE}
+```{r ih_boxplot_ponca, fig.width = 4.5, fig.height=6, include=FALSE, eval=ponca}
 load("../datos_procesados/2019-01-25_suitability_ponca.RData")
 
 tabla_suit_plot <- tabla_suit %>% 
@@ -1252,8 +1237,9 @@ ie_boxplot <- ggplot() +
 ie_boxplot
 ```
 
+`r ifelse(ponca, "
 Las coberturas ambientales se obtienen anualmente por lo que aunque todos
-los registros del *Puma concolor* del periodo completo (2004 al 2014 en este 
+los registros del *Panthera onca* del periodo completo (2004 al 2014 en este 
 caso) 
 ayudan a caracterizar el nicho ecológico con la mayor información disponible de la especie, 
 es factible además reproyectar dichas condiciones al espacio geográfico anualmente 
@@ -1275,10 +1261,11 @@ la mejor calidad o idoneidad de hábitat en este caso del Puma.
 
 
 Los diagramas de caja y brazos del abajo buscan comparar la idoneidad de 
-hábitat para el *Puma concolor* a lo largo de las ANPs que pertenecen a la región 
-CONANP `r mi_region`.
+hábitat para *Panthera onca* a lo largo de las ANPs que pertenecen a la región 
+CONANP de la ANP.
+", "")`
 
-```{r ih_boxplot_2_ponca, fig.width = 4.5, fig.height=6, eval=TRUE}
+```{r ih_boxplot_2_ponca, fig.width = 4.5, fig.height=6, eval=ponca}
 ih_stats_2014 <- suit_stats %>% 
     ungroup() %>% 
     filter(anio == 2014, tipo != "ANP", anp %in% mis_anps_region) %>% 
