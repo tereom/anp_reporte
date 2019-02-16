@@ -848,18 +848,9 @@ grises corresponden a los pixeles que caen fuera del rango central.
 
 
 ### Fauna
+La calidad de hábitat se refiere a las condiciones locales de preferencia de una especie. Estimar la calidad de hábitat es relevante particularmente para especies con baja densidad y en el que es muy costoso el monitoreo poblacional pero que son clave en los ecosistemas por lo que se utilizó para caracterizar el hábitat de los depredadores tope de México, se analiza en particular su condicion en cada Área Naturale Protegida en la que estas especies se distribuyen. 
 
-La idoneidad de hábitat se refiere a las condiciones locales de preferencia de 
-una especie. Se utilizan registros georreferidos del SNMB obtenidos a partir 
-de fototrampeo, huellas, excretas, registros fotográficos, del 
-SNIB (Sistema Nacional de Información de la Biodiversidad, COBANIO) y los 
-registros de la plataforma de Naturalista en vida libre.
-
-El año del registro es importante para asociarlo con la condición del sitio en 
-el año que fue observado o capturado. Todos los registros de la especie de 
-interés se relacionan espacio-temporalmente con las coberturas de hábitat como, 
-la estructura de la vegetación (INFyS) y las obtenidas de imágenes por 
-percepción remota (Land Sat).
+Se utilizan registros georreferidos del SNMB obtenidos a partir de fototrampeo, huellas, excretas, registros fotográficos, del SNIB (Sistema Nacional de Información de la Biodiversidad, CONABIO).El año del registro es importante para asociarlo con la condición del sitio en el año que fue observado o capturado. Todos los registros de la especie de interés se relacionan espacio-temporalmente con las coberturas de hábitat como, la estructura de la vegetación (INFyS) y las obtenidas de imágenes mediante percepción remota (Land Sat). Las coberturas ambientales se obtienen anualmente por lo que aunque todos los registros de la especie del periodo completo (2008 al 2014 en este caso) ayudan a caracterizar el nicho ecológico con la mejor información ambiental disponible, es factible además reproyectar dichas condiciones al espacio geográfico anualmente (https://github.com/luismurao/hsi). 
 
 ```{r}
 secciones <- read_csv("../datos_insumo/puma_ponca_anps.csv") %>% 
@@ -870,9 +861,10 @@ ponca <- secciones$`Panthera onca`
 ```
 
 `r ifelse(puma, "
+
 #### Puma concolor
 
-El siguiente mapa nos muestra las variaciones en la idoneidad dentro de la ANP
+El siguiente mapa nos muestra la variabilidad espacial en la calidad de hábitat dentro y fuera del ANP
 para el año 2014.
 ", "")`
 
@@ -926,9 +918,9 @@ leaflet() %>%
 ```
 
 `r ifelse(puma, "
-La siguiente gráfica nos muestra la distribución de la idoneidad a lo largo de 
-los años 2005 a 2014. Los puntos azules corresponden a la idoneidad de hábitat 
-para el puma en el anillo circundante a la ANP.
+La siguiente gráfica nos muestra la distribución de la calidad de hábitat a lo largo de 
+los años 2008 a 2014. Los puntos azules corresponden a la idoneidad de hábitat 
+para el puma en la periferia circundante a la ANP.
 ", "")
 
 ```{r, fig.width=4, fig.height=3, eval = puma}
@@ -956,15 +948,14 @@ plot_ih_anio <- ggplot(mi_tabla_suit_anp, aes(x = factor(anio), y = idoneidad)) 
     geom_point(data = mi_ih_stats, aes(x = factor(anio), y = mediana, 
         color = clase)) +
     scale_color_manual("", values = escala_color_sin_anp) +
-    labs(x = "año", y = "", title = "Idoneidad de hábitat", color = "")
+    labs(x = "año", y = "", title = "Calidad de hábitat", color = "")
 
 ggplotly(plot_ih_anio)
 ```
 
 <!--
-Percentil 75 de idoneidad en la ANP y el anillo que la rodea. La línea roja 
-corresponde a la ANP y la 
-línea azúl al anillo.
+Percentil 75 de calidad de hábitat en la ANP y periferia que la rodea. La línea roja 
+corresponde a la ANP y la línea azúl a la periferia.
 -->
 
 ```{r, fig.width=4, fig.height=3, echo=FALSE, include=FALSE, eval=FALSE}
@@ -1044,29 +1035,8 @@ ie_boxplot
 ```
 
 `r ifelse(puma, "
-Las coberturas ambientales se obtienen anualmente por lo que aunque todos
-los registros del *Puma concolor* del periodo completo (2004 al 2014 en este 
-caso) 
-ayudan a caracterizar el nicho ecológico con la mayor información disponible de la especie, 
-es factible además reproyectar dichas condiciones al espacio geográfico anualmente 
-(hdm, R package).
 
-Del modelo desarrollado se seleccionan las variables ambientales que 
-muestran mejor desempeño en los modelos y que además están menos correlacionadas 
-entre ellas. Así es como todas las combinaciones de las variables de hábitat se 
-modelan con base en un elipsoide de tres dimensiones. Se crea la caracterización 
-del nicho ambiental del hábitat de cada especie. 
-
-La razón de usar los elipsoides como aproximación geométrica del nicho ecológico 
-se sustenta en los trabajos teóricos y experimentales que proponen que la forma 
-de los nichos es convexa y que se asemeja a un elipsoide (Birch, 1953; Maguire, 
-1967; Hooper et al, 2008; Angilletta, 2009; Soberón & Nakamura, 2009; Soberón & 
-Peterson, 2011; Qiao et al, 2016). Así el centro del elipsoide es una 
-aproximación de las mejores condiciones por lo que representan las regiones con 
-la mejor calidad o idoneidad de hábitat en este caso del Puma.
-
-
-Los diagramas de caja y brazos del abajo buscan comparar la idoneidad de 
+Los diagramas de caja y brazos del abajo buscan comparar la calidad de 
 hábitat para el *Puma concolor* a lo largo de las ANPs que pertenecen a la región 
 CONANP de la ANP.
 ", "")`
@@ -1101,16 +1071,16 @@ ie_boxplot <- ggplot() +
     scale_color_manual("", values = escala_color) +
     geom_point(data = ih_stats_2014, aes(x = anp_corto, 
         y = mediana, color = clase),  alpha = 0.8) +
-    labs(x = ",", title = "Idoneidad de hábitat", y = "")
+    labs(x = ",", title = "Calidad de hábitat", y = "")
 
 ie_boxplot
 ```
 
 
 `r ifelse(ponca, "
-#### Panthera Onca
+#### Panthera onca
 
-El siguiente mapa nos muestra las variaciones en la idoneidad dentro de la ANP
+El siguiente mapa nos muestra las variaciones en la calidad de hábitat dentro de la ANP
 para el año 2014.
 ", "")`
 
@@ -1165,8 +1135,8 @@ leaflet() %>%
 
 `r ifelse(ponca, "
 La siguiente gráfica nos muestra la distribución de la idoneidad a lo largo de 
-los años 2005 a 2014. Los puntos azules corresponden a la idoneidad de hábitat 
-para la panthera onca en el anillo circundante a la ANP.
+los años 2008 a 2014. Los puntos azules corresponden a la calidad de hábitat 
+para la _Panthera onca_ en el anillo circundante a la ANP.
 ", "")
 
 ```{r, fig.width=4, fig.height=3, eval = ponca}
@@ -1194,7 +1164,7 @@ plot_ih_anio <- ggplot(mi_tabla_suit_anp, aes(x = factor(anio), y = idoneidad)) 
     geom_point(data = mi_ih_stats, aes(x = factor(anio), y = mediana, 
         color = clase)) +
     scale_color_manual("", values = escala_color_sin_anp) +
-    labs(x = "año", y = "", title = "Idoneidad de hábitat", color = "")
+    labs(x = "año", y = "", title = "Calidad de hábitat", color = "")
 
 ggplotly(plot_ih_anio)
 ```
@@ -1238,30 +1208,9 @@ ie_boxplot
 ```
 
 `r ifelse(ponca, "
-Las coberturas ambientales se obtienen anualmente por lo que aunque todos
-los registros del *Panthera onca* del periodo completo (2004 al 2014 en este 
-caso) 
-ayudan a caracterizar el nicho ecológico con la mayor información disponible de la especie, 
-es factible además reproyectar dichas condiciones al espacio geográfico anualmente 
-(hdm, R package).
 
-Del modelo desarrollado se seleccionan las variables ambientales que 
-muestran mejor desempeño en los modelos y que además están menos correlacionadas 
-entre ellas. Así es como todas las combinaciones de las variables de hábitat se 
-modelan con base en un elipsoide de tres dimensiones. Se crea la caracterización 
-del nicho ambiental del hábitat de cada especie. 
-
-La razón de usar los elipsoides como aproximación geométrica del nicho ecológico 
-se sustenta en los trabajos teóricos y experimentales que proponen que la forma 
-de los nichos es convexa y que se asemeja a un elipsoide (Birch, 1953; Maguire, 
-1967; Hooper et al, 2008; Angilletta, 2009; Soberón & Nakamura, 2009; Soberón & 
-Peterson, 2011; Qiao et al, 2016). Así el centro del elipsoide es una 
-aproximación de las mejores condiciones por lo que representan las regiones con 
-la mejor calidad o idoneidad de hábitat en este caso del Puma.
-
-
-Los diagramas de caja y brazos del abajo buscan comparar la idoneidad de 
-hábitat para *Panthera onca* a lo largo de las ANPs que pertenecen a la región 
+Los diagramas de caja y brazos del abajo buscan comparar la calidad del 
+hábitat para *_Panthera onca_* a lo largo de las ANPs que pertenecen a la región 
 CONANP de la ANP.
 ", "")`
 
@@ -1295,9 +1244,19 @@ ie_boxplot <- ggplot() +
     scale_color_manual("", values = escala_color) +
     geom_point(data = ih_stats_2014, aes(x = anp_corto, 
         y = mediana, color = clase),  alpha = 0.8) +
-    labs(x = ",", title = "Idoneidad de hábitat", y = "")
+    labs(x = ",", title = "Calidad de hábitat", y = "")
 
 ie_boxplot
+
+**Modelo de calidad de hábitat**
+
+El método de modelación utilizado está basado en el supuesto teórico (Maguire, 1973) y en la evidencia experimental de que diferentes regiones del nicho ecológico corresponden a valores positivos de la tasa intrínseca de crecimiento poblacional, siendo el centro “centroide” del nicho donde dicha tasa alcanza su valor máximo (Martínez-Meyer et al. 2013) y disminuye hacia la periferia de éste (Osorio-Olvera et al. 2016); en este orden de ideas, algunos autores han mostrado con evidencia empírica que existe una correlación negativa entre abundancia y la distancia al centroide del nicho (Yañez-Arenas et al. 2012, Martínez-Meyer et al. 2013, Ureña-Aranda et al. 2015).
+
+Debido a que se tienen series anuales a partir de 2008 de 22 variables ambientales, se pudo caracterizar la calidad del hábitat de cada depredador en el tiempo. Las variables ambientales fueron seleccionadas a partir de modelos de distancia al centroide de un nicho elipsoidal donde para elegir el mejor modelo se evaluó con una prueba de significancia estadística y de rendimiento todas las posibles combinaciones de los modelos generados con las variables ambientales tomadas de tres en tres. 
+
+La medida de distancia al centroide del elipsoide utilizada fue la distancia de Mahalanobis (Mahalanobis, 1936). El resultado final es producto de una serie iterativa de generación de modelos específicos en el tiempo (Peterson et al. 2005). 
+Con base en el mejor modelo, se caracterizó ambientalmente los sitios donde recientemente se han encontrado ambos depredadores y se determinaron los valores “óptimos” o centroides ambientales de éstos. La identificación de las condiciones más cercanas al “centroide de este volumen ambiental” permite reconocer los sitios geográficos donde las especies tendrán las mejores condiciones ambientales para su sobrevivencia.
+
 ```
 
 ### Referencias y materiales
@@ -1324,9 +1283,15 @@ Landsat imagery, NASA Land Processes Distributed Active Archive Center (LP DAAC)
 
 Maguire, Jr., B. (1973). Niche Response Structure and the Analytical Potentials of Its Relationship to the Habitat. The American Naturalist. http://doi.org/10.1086/282827
 
+Osorio-Olvera, A.A.; Falconi, Manuel  y  Soberón, Jorge. Sobre la relación entre idoneidad del hábitat y la abundancia poblacional bajo diferentes escenarios de dispersión. Rev. Mex. Biodiv. [online]. 2016, vol.87, n.3
+
+Peterson,A. Towsend.,C. Martínez-Campos, Y. Nakazawa, E. Martínez-Meyer. 2005. Time-specific ecological niche modeling predicts spatial dynamics of vector insects and human dengue cases, Transactions of The Royal Society of Tropical Medicine and Hygiene, Volume 99, Issue 9, Pages 647–655, https://doi.org/10.1016/j.trstmh.2005.02.004
+
 Qiao, H., Peterson, A. T., Campbell, L. P., Soberón, J., Ji, L. and Escobar, L. E. (2016), NicheA: creating virtual species and ecological niches in multivariate environmental scenarios. Ecography, 39, pp. 805–813. doi: 10.1111/ecog.01961
 
 Soberón, J. and Nakamura, M. (2009) Niches and distributional areas: concepts, methods, and assumptions. Proc. Natl Acad. Sci. USA 106, pp. 19644–19650. Tropical and Subtropical Agroecosystems, 16, pp. 183–191
+
+Ureña-Aranda CA, Rojas-Soto O, Martínez-Meyer E, Yáñez-Arenas C, Landgrave Ramírez R, et al. 2015. Using Range-Wide Abundance Modeling to Identify Key Conservation Areas for the Micro-Endemic Bolson Tortoise (Gopherus flavomarginatus). PLOS ONE 10(6): e0131452. https://doi.org/10.1371/journal.pone.0131452
 
 <script>
   $(document).ready(function () {
