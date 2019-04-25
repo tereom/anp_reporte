@@ -288,10 +288,9 @@ CAMBIAR
 
 
 La clasificación de la cobertura de suelo se realiza con un algoritmo automatizado, 
-que genera un mapa con resolución espacial de 30 m^2^, construido a partir de 
-imágenes Landsat correspondientes al año 2010. Temáticamente se agregó para 
-contar con 10 clases:  bosques, selvas, matorrales, pastizal, 
-sin vegetación aparente, humedal, agricultura, asentamiento humano, agua y nieve/hielo.
+que genera un mapa con resolución espacial de 5 m^2^, construido a partir de 
+imágenes Rapideye correspondientes al año 2015. Temáticamente se agregó para 
+contar con 8 clases:  Bosque templado, Selva perennifolia, subperennifolia, caducifolia y subcaducifolia, Matorral, Vegetación menor y Pastizales, Tierras Agrícolas, Urbano y construido, Sin vegetación aparente (suelo desnudo) y Agua.
 
 La tabla de la derecha nos muestra el porcentaje del área de la ANP *`r mi_anp_print`* 
 que pertence a cada clase de acuerdo al mapa 2010.
