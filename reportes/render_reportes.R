@@ -4,19 +4,18 @@ library(stringr)
 library(knitr)
 library(rmarkdown)
 
-anp_nombres <- readr::read_delim("datos_insumo/anp_nombres.tsv", "\t", 
-    escape_double = FALSE, trim_ws = TRUE)
+anp_nombres <- readr::read_csv("datos_procesados/nombres_anps_id.csv")
 
 render_reporte <- function(mi_anp, dir_save = "reportes_html", 
     rmd_file = "reportes/prototipo.Rmd", ext = ".html") {
+    id_07 <- anp_nombres$id_07[anp_nombres$anp == mi_anp]
     try(rmarkdown::render(rmd_file, 
-        output_file = str_c(mi_anp, ext), 
+        output_file = str_c(id_07, ext), 
         output_dir = str_c("reportes/", dir_save),
         params = list(mi_anp = mi_anp)
-        ))
+    ))
     mi_anp
 }
-
 
 render_reporte("anp_terrestres_2017_NOMBRE_Calakmul")
 
@@ -26,12 +25,12 @@ quitar <- c("anp_terrestres_2017_NOMBRE_C.A.D.N.R._043_Estado_de_Nayarit",
     "anp_terrestres_2017_NOMBRE_Islas_del_Golfo_de_California")
 
 # truena la isa isabel (58), rio bravo del norte no tiene superficie?
-anp_nombres_cl <- dplyr::filter(anp_nombres, !(anp_sin_acentos %in% quitar))
-reportes <- purrr::map(anp_nombres_cl$anp_sin_acentos, render_reporte, 
-    dir_save = "2018-03-19_reportes_html")
+anp_nombres_cl <- dplyr::filter(anp_nombres, !(anp %in% quitar))
+reportes <- purrr::map(anp_nombres_cl$anp, render_reporte, 
+    dir_save = "2019-05-13_reportes_id07_html")
 
 # revisión de creados
-reportes_generados <- list.files("reportes/2018-03-19_reportes_html/", 
+reportes_generados <- list.files("reportes/2019-05-13_reportes_id07_html/", 
     pattern = ".html") %>% 
     tools::file_path_sans_ext()
 
@@ -40,7 +39,7 @@ anps_faltantes <- anp_nombres_cl %>%
     pull(anp_sin_acentos)
 
 reportes <- purrr::map(anps_faltantes, render_reporte,
-    dir_save = "2018-03-19_reportes_html")
+    dir_save = "2019-05-13_reportes_html")
 
 # PDFs
 reportes <- map(anp_nombres_cl$anp_sin_acentos, ~render_reporte(.,  
