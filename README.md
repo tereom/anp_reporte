@@ -1,6 +1,6 @@
 # anp_reporte
 
-Se crean reportes en formato html y formato pdf con información de las ANPs de CONANP, estos incluyen datos de uso de suelo, pérdida de cobertura boscosa e integridad ecosistémica.
+Se crean reportes en formato html y formato pdf con información de las ANPs de CONANP, estos incluyen datos de uso de suelo, pérdida de cobertura boscosa, integridad ecosistémica, calidad de hábitat. Los reportes se pueden consultar en https://monitoreo.conabio.gob.mx en la sección de indicadores, como ejemplo el correspondiente a Calakmul esta [aquí](https://monitoreo.conabio.gob.mx/i-efectividad/reportes_html/9103.html).
 
 Fuentes de información
 
@@ -9,15 +9,37 @@ Fuentes de información
 * [Deforestación, Matt Hansen](http://earthenginepartners.appspot.com/science-2013-global-forest)
 * [Clases de cobertura Madmex](http://madmex.conabio.gob.mx/)
 
-## prprocesamiento
+## Código
 
-### crear_datos_cobertura_slurm.R 
+El esquema de carpetas para correr el código es como sigue:
+
+```
+anp_reporte
+    ├── preprocesamiento
+    │   ├── crear_tablas_cobertura.R
+    │   ├── crear_tablas_ecorregion_region.R
+    │   ├── crear_tablas_ie_adi.R
+    │   └── crear_tablas_calidad_habitat.R
+    ├── procesamiento_datos
+    ├── reportes
+    ├── datos_insumo
+        ├── ecorregiones
+    └── datos_procesados
+
+```
+
+## preprocesamiento
+En la sección de preprocesamiento se encuentran los scripts que generan tablas de datos que después se utilizan en los reportes.
+
+### crear_tablas_cobertura.R 
 Crea tablas para ANPs y sus anillos con variables: year_loss (0: no pérdida, 10: pérdida 2011, 11: pérdida 2012,...), 
 clase_madmex (clase de cobertura), n (número de pixeles 30x30 m), anp (nombre de ANP coinicide con nombre de archivo).
 
 #### Entradas
 * /LUSTRE/MADMEX/eodata/footprints/anp/anp_sinBuffer/.. shapes de ANPs
 * /LUSTRE/MADMEX/eodata/footprints/anp/anp_rings/.. shapes de anillos de 20km alrededor de ANPs
+* /LUSTRE/MADMEX/eodata/footprints/anp/anp_zonasnucleo/.. shapes de zonas núcleo (definidos solo en algunas ANPs)
+* /LUSTRE/MADMEX/eodata/footprints/anp/anp_zonaspreservacion/.. shapes de zonas preservación (definidos solo en algunas ANPs)
 * datos_insumo/hansen_forest_loss_v1_4_wgs84nodefs.tif
 * datos_insumo/madmex_nalc_10c_30m_2010.tif
 
