@@ -23,7 +23,7 @@ anp_reporte
     ├── procesamiento_datos
     ├── reportes
     ├── datos_insumo
-        ├── ecorregiones
+    │   ├── ecorregiones
     └── datos_procesados
 
 ```
