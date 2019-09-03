@@ -40,14 +40,14 @@ perdida <- function(anp_shp){
             anp = basename(tools::file_path_sans_ext(anp_shp)),
             anp = str_replace(anp, pattern = "_ring", ""), 
             year_loss = year_loss + 2000
-            )
+        )
 }
 
 # anps
 path_anps_shp <- "datos_insumo/shapes_anp/anp_sinBuffer"
 anps_shp <- list.files(path_anps_shp, pattern = ".shp", recursive = FALSE, 
     full.names = TRUE)
-cobertura <- map(anps_shp[1:5], perdida)
+cobertura <- map(anps_shp, perdida)
 
 ############################# CLUSTER
 # en slurm
@@ -71,15 +71,15 @@ perdida_clase <- function(anp_shp, path_anp_shp){
     if(!is.null(anp_madmex_loss)){
         try(anp_madmex_loss_df <- data.frame( 
             raster::rasterToPoints(anp_madmex_loss), stringsAsFactors = FALSE) %>% 
-            dplyr::rename(year_loss = hansen_forest_loss_v1_6_lcc_cropped, 
-                clase_madmex = mapabase_8clases_re_2015_30m_lcc_cropped) %>% 
-            dplyr::count(year_loss, clase_madmex) %>% 
-            ungroup() %>% 
-            dplyr::mutate(
-                anp = basename(tools::file_path_sans_ext(anp_shp)),
-                anp = stringr::str_replace(anp, pattern = "_ring", ""), 
-                year_loss = year_loss + 2000
-            )
+                dplyr::rename(year_loss = hansen_forest_loss_v1_6_lcc_cropped, 
+                    clase_madmex = mapabase_8clases_re_2015_30m_lcc_cropped) %>% 
+                dplyr::count(year_loss, clase_madmex) %>% 
+                ungroup() %>% 
+                dplyr::mutate(
+                    anp = basename(tools::file_path_sans_ext(anp_shp)),
+                    anp = stringr::str_replace(anp, pattern = "_ring", ""), 
+                    year_loss = year_loss + 2000
+                )
         )
         if(is.null(anp_madmex_loss) | is.null(anp_madmex_loss_df)){
             return(NA)
@@ -87,7 +87,7 @@ perdida_clase <- function(anp_shp, path_anp_shp){
         return(anp_madmex_loss_df)
         
     }
-
+    
 }
 
 perdida <- function(anp_shp, path_anp_shp){
