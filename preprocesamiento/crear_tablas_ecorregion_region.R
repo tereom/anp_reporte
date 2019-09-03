@@ -51,7 +51,7 @@ anps_eco_area <- map(anps_shp, calcular_ecorregion_anp)
 anp_eco_df <- bind_rows(!!!anps_eco_area) %>% 
     rename(eco = DESECON1, id_07 = ID_07)
 
-save(anp_eco_df, file = "datos_procesados/area_ecorregion/2018-08-08_ecorregion.RData")
+write_rds(anp_eco_df, path = "datos_procesados/area_ecorregion/2018-08-08_ecorregion.RData")
 
 # en el caso de anillos, zonas núcleo y zonas de preservación no tenemos 
 # información de área en el shape y no nos interesa la ecorregión en que caen
@@ -66,7 +66,7 @@ calcular_area <- function(anp_shp){
         mutate(
             anp = tools::file_path_sans_ext(basename(anp_shp)), 
             hectareas = as.numeric(sum(area_r) / 10000)
-            ) %>% 
+        ) %>% 
         summarise(anp = first(anp), hectareas = first(hectareas)) 
     return(anp_area)
 }
