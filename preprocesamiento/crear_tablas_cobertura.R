@@ -1,4 +1,7 @@
-# entrada: hansen (2018), madmex 2015
+# corre en cluster y en local
+# 
+# entrada: rasters hansen (2018), y madmex 2015
+#          shapes anps, rings, zonasnucleo, zonaspreservacion
 # salidas: 
 #   1. aaaa_mm_dd_anp_tipo_loss.RData donde tipo es sinBuffer, rings, 
 #       zonasnucleo zonaspreservacion: pérdida en pixeles por año.
@@ -19,7 +22,7 @@ library(sf)
 # opción de cluster)
 
 hansen_loss <- raster::raster("datos_procesados/rasters/hansen_forest_loss_v1_6_lcc_cropped.tif")
-madmex_class <- raster::raster("datos_procesados/rasters/mapabase_8clases_re_2015_30m_lcc_cropped.tif")
+madmex_class <-  raster::raster("datos_procesados/rasters/mapabase_8clases_re_2015_30m_lcc_cropped.tif")
 
 madmex_loss <- raster::stack(list(hansen_loss, madmex_class)) 
 crs_loss <- as.character(crs(madmex_loss))
@@ -50,7 +53,7 @@ anps_shp <- list.files(path_anps_shp, pattern = ".shp", recursive = FALSE,
 cobertura <- map(anps_shp, perdida)
 
 ############################# CLUSTER
-# en slurm
+# con slurm
 library(dplyr)
 library(purrr)
 library(rslurm)
@@ -68,7 +71,7 @@ perdida_clase <- function(anp_shp, path_anp_shp){
     try(anp_madmex_loss <- madmex_loss %>% 
             raster::crop(anp) %>% 
             raster::mask(mask = anp))
-    if(!is.null(anp_madmex_loss)){
+    if (!is.null(anp_madmex_loss)) {
         try(anp_madmex_loss_df <- data.frame( 
             raster::rasterToPoints(anp_madmex_loss), stringsAsFactors = FALSE) %>% 
                 dplyr::rename(year_loss = hansen_forest_loss_v1_6_lcc_cropped, 
@@ -81,7 +84,7 @@ perdida_clase <- function(anp_shp, path_anp_shp){
                     year_loss = year_loss + 2000
                 )
         )
-        if(is.null(anp_madmex_loss) | is.null(anp_madmex_loss_df)){
+        if (is.null(anp_madmex_loss) | is.null(anp_madmex_loss_df)) {
             return(NA)
         }
         return(anp_madmex_loss_df)
@@ -131,7 +134,6 @@ correr_slurm_perdida <- function(tipo = "anp_sinBuffer"){
     anps_shp <- list.files(path_anps_shp, pattern = ".shp", recursive = FALSE, 
         full.names = FALSE) %>% 
         tools::file_path_sans_ext()
-    
     # parámetros en data.frame para la llamada de slurm_apply
     params_df <- data.frame(anp_shp = anps_shp, path_anp_shp = path_anps_shp, 
         stringsAsFactors = FALSE)
@@ -139,14 +141,14 @@ correr_slurm_perdida <- function(tipo = "anp_sinBuffer"){
         jobname = paste0("madmex_loss_2019_", tipo),
         nodes = 5, cpus_per_node = 2, slurm_options = list(partition = "optimus",
             nodes = "4", ntasks = "4"), add_objects = c("madmex_loss"))
-    # sjob_madmex <- slurm_apply(clase, params = params_df,
-    #     jobname = paste0("madmex_2019_", tipo),
-    #     nodes = 5, cpus_per_node = 2, slurm_options = list(partition = "optimus",
-    #         nodes = "4", ntasks = "4"), add_objects = c("madmex_class"))
-    # sjob_loss <- slurm_apply(perdida, params = params_df,
-    #     jobname = paste0("hansen_loss_2019_", tipo),
-    #     nodes = 5, cpus_per_node = 2, slurm_options = list(partition = "optimus",
-    #         nodes = "4", ntasks = "4"), add_objects = c("hansen_loss"))
+    sjob_madmex <- slurm_apply(clase, params = params_df,
+        jobname = paste0("madmex_2019_", tipo),
+        nodes = 5, cpus_per_node = 2, slurm_options = list(partition = "optimus",
+            nodes = "4", ntasks = "4"), add_objects = c("madmex_class"))
+    sjob_loss <- slurm_apply(perdida, params = params_df,
+        jobname = paste0("hansen_loss_2019_", tipo),
+        nodes = 5, cpus_per_node = 2, slurm_options = list(partition = "optimus",
+            nodes = "4", ntasks = "4"), add_objects = c("hansen_loss"))
 }
 
 correr_slurm_perdida("anp_sinBuffer")
@@ -171,7 +173,7 @@ escribir_resultados <- function(tipo, tipo_valor){
         #     "2019-05-09_", tipo, "_", tipo_valor, ".RData"))
         write_rds(path = paste0("datos_procesados/madmex_hansen/",
             "2019-05-09_", tipo, "_", tipo_valor, ".RData"))
-    if(sum(!is_df) > 0){
+    if (sum(!is_df) > 0) {
         names(anp_cobertura_list[!is_df]) %>% 
             # write.table(file = paste0("/LUSTRE/sacmod/reportes_anp/datos_procesados/",
             #     "2019-05-09_errores_", tipo, "_", tipo_valor, ".csv"), 
@@ -183,7 +185,7 @@ escribir_resultados <- function(tipo, tipo_valor){
 }
 
 tipo_valor <- c("madmex", "madmex_loss", "hansen_loss")
-tipo <- c("anp_sinBuffer", "anp_rings", "anp_zonasnucleo", "anp_zonaspresrvacion")
+tipo <- c("anp_sinBuffer", "anp_rings", "anp_zonasnucleo", "anp_zonaspreservacion")
 tipos <- expand.grid(tipo, tipo_valor, stringsAsFactors = FALSE) %>% 
     rename(tipo = Var1, tipo_valor = Var2)
 
