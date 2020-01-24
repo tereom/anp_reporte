@@ -1,4 +1,4 @@
-### correr en LUSTRE
+### correr en local
 library(raster)
 library(dplyr)
 library(stringr)
@@ -19,7 +19,6 @@ ecorregiones_lcc <- st_transform(ecorregiones_7, 6362)
 
 # calcular área intersectando con ecorregiones y agregar info de área que esta 
 # en shape: S_TERRES y SUPERFICIE
-
 calcular_ecorregion_anp <- function(anp_shp){
     print(anp_shp)
     anp <- st_read(anp_shp, stringsAsFactors = FALSE)
@@ -71,19 +70,17 @@ calcular_area <- function(anp_shp){
     return(anp_area)
 }
 
-# lista de archivos shapes
-path_anps_shp <- "datos_insumo/shapes_anp/anp_sinBuffer"
-path_anps_shp <- "datos_insumo/shapes_anp/anp_rings"
-path_anps_shp <- "datos_insumo/shapes_anp/anp_zonasnucleo"
-path_anps_shp <- "datos_insumo/shapes_anp/anp_zonaspreservacion/"
 
-anps_shp <- list.files(path_anps_shp, pattern = ".shp", recursive = FALSE, 
-    full.names = TRUE)
-anps_area <- map(anps_shp, calcular_area)
+correr_calcula_area <- function(path_anps_shp) {
+    anps_shp <- list.files(path_anps_shp, pattern = ".shp", recursive = FALSE, 
+        full.names = TRUE)
+    anps_area <- map(anps_shp, calcular_area)
+    anps_area_df <- bind_rows(!!!anps_area)
+}
 
-anps_area_sinBuffer <- bind_rows(!!!anps_area)
-anps_area_anillos <- bind_rows(!!!anps_area)
-anps_area_zonasnucleo <- bind_rows(!!!anps_area)
+anps_area_sinBuffer <- correr_calcula_area("datos_insumo/shapes_anp/anp_sinBuffer")
+anps_area_anillos <- correr_calcula_area("datos_insumo/shapes_anp/anp_zonasnucleo")
+anps_area_zonasnucleo <- correr_calcula_area("datos_insumo/shapes_anp/anp_zonaspreservacion/")
 
 # en zonas de preservación falla función calcular_area (en part. el distinct) 
 # para ANP Constitución
