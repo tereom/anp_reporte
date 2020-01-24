@@ -71,7 +71,7 @@ tasa_cambio <- tasa_cambio_aux %>%
 
 tasa_cambio_cl <- tasa_cambio %>% 
     left_join(perdida_anual_porcentaje, by = c("anp", "anio", "poligono")) %>% 
-    select(id_07, anp, nombre, poligono, anio, TTH = tasa_cambio, 
+    dplyr::select(id_07, anp, nombre, poligono, anio, TTH = tasa_cambio, 
         area_bosque_selva = area_total, perdida_ha)
 write_csv(filter(tasa_cambio_cl, !is.na(area_bosque_selva)), 
     "datos_procesados/madmex_hansen/tth_anual.csv")
