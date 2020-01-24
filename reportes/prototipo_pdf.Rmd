@@ -127,7 +127,7 @@ secciones <- read_csv("../datos_insumo/calidad_habitat/puma_ponca_anps.csv") %>%
     mutate_if(is.numeric, ~!is.na(.))
 puma <- secciones$`Puma concolor`
 ponca <- secciones$`Panthera onca`
-source("scripts/funciones_reporte.R")
+source("funciones_reporte.R")
 ```
 
 ## ANP `r mi_anp_print ` 

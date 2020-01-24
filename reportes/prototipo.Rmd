@@ -17,7 +17,7 @@ params:
 
 ```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
 # cargamos paquetes y nombramos constantes que se usarán a lo largo del reporte
-
+source("funciones_reporte.R")
 library(raster)
 library(dplyr)
 library(ggplot2)
@@ -32,6 +32,7 @@ library(leaflet.extras)
 library(tidyr)
 library(readr)
 library(xtable)
+library(here)
 
 knitr::opts_chunk$set(echo = FALSE, fig.align = "center", message = FALSE, 
     warning = FALSE, cache = FALSE)
@@ -39,35 +40,12 @@ knitr::opts_chunk$set(echo = FALSE, fig.align = "center", message = FALSE,
 theme_set(theme_minimal())
 
 # Se nombran constantes como nombres, id_07 y se buscan las ANPs comparables
-manejo_ha_anp <- read_csv("../datos_procesados/2019-01-15_manejo_ha_extent_anp.csv")
+manejo_ha_anp <- read_csv(here("datos_procesados", 
+    "2019-01-15_manejo_ha_extent_anp.csv"))
 
-anp_nombres <- readr::read_delim("../datos_insumo/anp_nombres.tsv", "\t", 
+anp_nombres <- readr::read_delim(here("datos_insumo", "anp_nombres.tsv"), "\t", 
     escape_double = FALSE, trim_ws = TRUE)
 mi_anp <- params$mi_anp
-
-obtener_anps <- function(mi_anp, manejo_ha_anp){
-    #' Finds comparable ANPs
-    #' 
-    #' Given a target ANP the function finds at most 5 other ANPs that belong 
-    #' to the same ecorregion and if more tha 5 are found it returns the 5 
-    #' of closest size, along with the target ANP.
-    #' @param mi_anp The target ANP.
-    #' @return A vector with the name of the comparable ANPs.
-    mi_info <- manejo_ha_anp %>% 
-        dplyr::filter(anp == mi_anp)
-    mi_eco <- pull(mi_info, eco)
-    tab_eco <- dplyr::filter(manejo_ha_anp, eco %in% mi_eco)
-    if (nrow(tab_eco) > 5) {
-        mi_tamano <-  pull(mi_info, S_TERRES)
-        tab_eco <- tab_eco %>% 
-            ungroup() %>% 
-            mutate(dist = abs(S_TERRES - mi_tamano)) %>% 
-            arrange(dist) %>% 
-            top_n(n = 6, -dist) 
-    }
-    pull(tab_eco, anp)
-}
-
 
 mi_anp_nombres <- anp_nombres %>% 
     filter(anp_sin_acentos == mi_anp)
@@ -90,7 +68,8 @@ mis_anps_region <- manejo_ha_anp %>%
 # estilos
 # json con estilos de geoserver, se necesita porque las leyendas se construyen 
 # en R
-estilos <- rjson::fromJSON(file = "../datos_insumo/spatial_layers_styles.json")
+estilos <- rjson::fromJSON(file = here("datos_insumo", 
+    "spatial_layers_styles.json"))
 estilos_df <- estilos %>% 
     flatten() %>% 
     map_df(~tibble(layer = .$layer, labels = list(.$data_labels), 
@@ -105,7 +84,8 @@ names(escala_alpha) <- c("otras", "periferia", "z.núcleo", "z.preservación",
     mi_anp_corto)
 
 # constantes perdida boscosa
-path_perdida <- "../datos_procesados/madmex_hansen/perdida_cobertura_2001_2018.csv"
+path_perdida <- here("datos_procesados", "madmex_hansen", 
+    "perdida_cobertura_2001_2018.csv")
 perdida <- read_csv(path_perdida)
 indice_perdida <- perdida %>% 
     filter(poligono == "anp") %>% 
@@ -125,12 +105,12 @@ indice_perdida <- perdida %>%
         ind_cat = ind_perdida < 0
     ) 
 # revisar si hay sección fauna
-secciones <- read_csv("../datos_insumo/calidad_habitat/puma_ponca_anps.csv") %>% 
+secciones <- read_csv(here("datos_insumo", "calidad_habitat", 
+    "puma_ponca_anps.csv")) %>% 
     dplyr::filter(ID_07 == mi_anp_id_07) %>% 
     mutate_if(is.numeric, ~!is.na(.))
 puma <- secciones$`Puma concolor`
 ponca <- secciones$`Panthera onca`
-source("scripts/funciones_reporte.R")
 ```
 
 
@@ -149,6 +129,7 @@ anp_eco_table <- tabs_mi_anp_eco$anp_eco_table
 anp_rings_eco <- tabs_mi_anp_eco$anp_rings_eco
 tabs_mi_anp_eco$anp_eco_table_print
 ```
+
 A lo largo del reporte los indicadores del área natural protegida (ANP) objetivo 
 se comparan con los indicadores de otras ANP de la misma ecorregión, esto se 
 hace para poder contextuaizar los valores obtenidos. Utilizamos la definición de 

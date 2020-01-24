@@ -1,69 +1,56 @@
-library(readr)
-library(dplyr)
-library(stringr)
-library(knitr)
-library(rmarkdown)
 
-anp_nombres <- readr::read_csv("datos_procesados/nombres_anps_id.csv")
+anp_ids <- readr::read_csv("datos_procesados/nombres_anps_id.csv")
 
-render_reporte <- function(mi_anp, dir_save = "reportes_html", 
+render_reporte <- function(anp, dir_save = "reportes_html", 
     rmd_file = "reportes/prototipo.Rmd", ext = ".html") {
-    id_07 <- anp_nombres$id_07[anp_nombres$anp == mi_anp]
-    try(rmarkdown::render(rmd_file, 
-        output_file = str_c(id_07, ext), 
-        output_dir = str_c("reportes/", dir_save),
-        params = list(mi_anp = mi_anp)
-    ))
-    mi_anp
+    print(anp)
+    id_07 <- anp_ids$id_07[anp_ids$anp == anp]
+    rmarkdown::render(rmd_file, 
+        output_file = stringr::str_c(id_07, ext), 
+        output_dir = stringr::str_c("reportes/", dir_save),
+        params = list(mi_anp = anp)
+    )
 }
+safely_render <- purrr::safely(render_reporte)
 
-render_reporte("anp_terrestres_2017_NOMBRE_Calakmul")
+render_reporte(anp = "anp_terrestres_2017_NOMBRE_Calakmul")
+
 
 # HTMLs
 # quitamos ANPs que pertenecen a más de una región
 quitar <- c("anp_terrestres_2017_NOMBRE_C.A.D.N.R._043_Estado_de_Nayarit", 
     "anp_terrestres_2017_NOMBRE_Islas_del_Golfo_de_California")
 
-# truena la isa isabel (58), rio bravo del norte no tiene superficie?
-anp_nombres_cl <- dplyr::filter(anp_nombres, !(anp %in% quitar))
-reportes <- purrr::map(anp_nombres_cl$anp, render_reporte, 
-    dir_save = "2019-05-13_reportes_id07_html")
+# truena la isa isabel (58), rio bravo del norte, no tiene superficie?
+anp_nombres_cl <- dplyr::filter(anp_ids, !(anp %in% quitar))
+purrr::walk(anp_nombres_cl$anp, safely_render, 
+    dir_save = "2019-08-20_reportes_id07_html")
+
+purrr::walk(anp_nombres_cl$anp, safely_render, 
+    rmd_file = "reportes/prototipo_pdf.Rmd",
+    dir_save = "2019-08-20_reportes_id07_pdf", ext = ".pdf")
+
 
 # revisión de creados
-reportes_generados <- list.files("reportes/2019-05-13_reportes_id07_html/", 
+reportes_generados <- list.files("reportes/2019-08-20_reportes_id07_html/", 
     pattern = ".html") %>% 
     tools::file_path_sans_ext()
 
-anps_faltantes <- anp_nombres_cl %>% 
-    filter(!(anp_sin_acentos %in% reportes_generados)) %>% 
-    pull(anp_sin_acentos)
+reportes_generados_pdf <- list.files("reportes/2019-08-20_reportes_id07_pdf/", 
+    pattern = ".pdf") %>% 
+    tools::file_path_sans_ext()
 
-reportes <- purrr::map(anps_faltantes, render_reporte,
-    dir_save = "2019-05-13_reportes_html")
+anps_faltantes <- anp_nombres_cl %>% 
+    dplyr::filter(!(id_07 %in% reportes_generados_pdf)) %>% 
+    dplyr::pull(anp)
+
+purrr::walk(anps_faltantes, safely_render,
+    dir_save = "2019-08-20_reportes_id07_html")
 
 # PDFs
-reportes <- map(anp_nombres_cl$anp_sin_acentos, ~render_reporte(.,  
-    dir_save = "2017-11-10_reportes_pdf", rmd_file = "reportes/prototipo_pdf.Rmd"))
+map(anp_nombres_cl$anp_sin_acentos, ~render_reporte(.,  
+    dir_save = "2019-08-30_reportes_pdf", 
+    rmd_file = "reportes/prototipo_pdf_v2.Rmd"))
 
 
-# PDFs faltantes
-reportes_generados <- list.files("reportes/2017-11-10_reportes_pdf/", 
-        pattern = ".pdf") %>% 
-    tools::file_path_sans_ext()
-    
-anps_faltantes <- anp_nombres_cl %>% 
-    filter(!(anp_sin_acentos %in% reportes_generados)) %>% 
-    pull(anp_sin_acentos)
 
-reportes <- map(anps_faltantes, ~render_reporte(.,  
-    dir_save = "2017-11-10_reportes_pdf", 
-    rmd_file = "reportes/prototipo_pdf.Rmd"), 
-    ext = ".pdf")
-    
-anps_interes <- c("anp_terrestres_2017_NOMBRE_Janos", 
-    "anp_terrestres_2017_NOMBRE_Calakmul", 
-    "anp_terrestres_2017_NOMBRE_Montes_Azules", 
-    "anp_terrestres_2017_NOMBRE_Tehuacan-Cuicatlan")
-
-reportes <- purrr::map(anps_interes, ~render_reporte(.,  
-    rmd_file = "prototipo.Rmd", dir_save = "2018-02-22_reportes_ej"))
