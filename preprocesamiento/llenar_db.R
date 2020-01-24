@@ -34,6 +34,7 @@ anps_ids <- anp_tipo %>%
     left_join(lista_anps_ids, by = c("lista_anps_id" = "id"), copy = TRUE) %>% 
     collect() %>% 
     rename(anp_tipo_id = id)
+write_csv(anps_ids, "datos_procesados/anps_ids.csv")
 View(anps_ids)
 
 # ---------------- crear tablas shapes para unir datos ------------
