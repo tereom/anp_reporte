@@ -1,4 +1,4 @@
-### correr en LUSTRE
+### correr en local
 library(raster)
 library(dplyr)
 library(stringr)
