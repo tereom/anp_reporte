@@ -52,20 +52,3 @@ ie_zp_list <- purrr::map(anps_shp, calcular_ie)
 
 save(ie_list, ie_anillos_list, ie_zn_list, ie_zp_list, 
     file =  "datos_procesados/2018-09-04.RData")
-
-
-### procesar región CONANP
-
-adi <- raster("../datos_insumo/adi/ADI_2014-2015_1000m.tif")
-adi_dia <- raster("../datos_insumo/adi/ADI_dia_2014-2015_1000m.tif")
-adi_noche <- raster("../datos_insumo/adi/ADI_noche_2014-2015_1000m.tif")
-
-adi_longlat <- projectRaster(adi, crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
-rf <- writeRaster(adi_longlat, filename = "../datos_procesados/2017-10-17_adi_longlat.tif",
-    format = "GTiff", overwrite = TRUE, dataType = "INT2U", options = "COMPRESS=LZW")
-adi_dia_longlat <- projectRaster(adi_dia, crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
-rf <- writeRaster(adi_dia_longlat, filename = "../datos_procesados/2017-10-17_adi_dia_longlat.tif",
-    format = "GTiff", overwrite = TRUE, dataType = "INT2U", options = "COMPRESS=LZW")
-adi_noche_longlat <- projectRaster(adi_noche, crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
-rf <- writeRaster(adi_noche_longlat, filename = "../datos_procesados/2017-10-17_adi_noche_longlat.tif",
-    format = "GTiff", overwrite = TRUE, dataType = "INT2U", options = "COMPRESS=LZW")
