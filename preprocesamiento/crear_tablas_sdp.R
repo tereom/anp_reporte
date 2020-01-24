@@ -1,8 +1,9 @@
+# corre en local
+
 library(raster)
 library(dplyr)
 library(stringr)
 library(purrr)
-library(rslurm)
 library(lubridate)
 library(readr)
 library(ggplot2)

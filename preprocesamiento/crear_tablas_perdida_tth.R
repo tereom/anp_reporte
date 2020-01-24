@@ -2,7 +2,6 @@ library(tidyverse)
 perdida <- read_csv("datos_procesados/madmex_hansen/perdida_cobertura_2001_2018.csv")
 madmex <- read_csv("datos_procesados/madmex_hansen/clase_cobertura_2015.csv")
 
-
 # cálculo de pérdida como porcentaje del área total y en hectáreas
 perdida_anual_porcentaje <- perdida %>% 
     group_by(anp, poligono) %>% 
