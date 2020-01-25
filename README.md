@@ -78,8 +78,6 @@ Crea tabla indicando a que categoría de manejo pertenece cada ANP y su extent.
 Crea una lista con una entrada para cada ANP, la lista incluye la media, mediana y desviación estándar 
 de integridad ecológica, el último campo de la lista es una muestra de 1000 valores de integridad.
 
-Reproyecta los rasters de ADI a longlat.
-
 #### Entradas
 * datos_insumo/ie_2014_250m.tif
 * datos_insumo/adi/ADI_2014-2015_1000m.tif
@@ -156,11 +154,8 @@ separar el reporte en funciones facilita el mantenimiento.
 Código para crear reportes html o pdf.
 
 #### Salidas
-* aaaa-mm-dd_reportes_html/NOMBRE_ANP.html
-
-
-#### Salidas
-* aaaa-mm-dd_reportes_pdf/NOMBRE_ANP.pdf
+* aaaa-mm-dd_reportes_html/id_ANP.html
+* aaaa-mm-dd_reportes_pdf/id_ANP.pdf
 
 
 ## datos_insumo
