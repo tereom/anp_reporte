@@ -16,7 +16,7 @@ estilos_df <- estilos %>%
     map_df(~tibble(layer = .$layer, labels = list(.$data_labels), 
         colors = list(.$colors)))
 
-source("reportes/scripts/funciones_reporte.R")
+source("reportes/funciones_reporte.R")
 
 crear_mapas <- function(capa, manejo_ha_anp, estilos_df) {
     mapas_leaflet <- manejo_ha_anp %>% 
