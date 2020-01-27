@@ -5,7 +5,7 @@ output:
         css: estilo.css
 params:
     mi_anp:
-        value: anp_terrestres_2017_NOMBRE_Calakmul
+        value: anp_terrestres_2017_NOMBRE_La_Encrucijada
 ---
 
 <div class="section content" align="center">
@@ -304,6 +304,7 @@ el índice tomará un valor positivo. La gráfica de abajo indica el valor de es
 ```{r deforestacion_region_conanp}
 perdida$plot_perdida  
 ```
+
 ### Integridad
 
 #### Integridad ecosistémica
@@ -528,10 +529,11 @@ Se compilaron inventarios de especies de mamíferos (Sistema Nacional de Informa
 `
 
 ```{r especies_clave, warning=FALSE, comments=FALSE, message=FALSE, echo=FALSE, fig.width = 8, fig.align='center', out.width="150%", eval = es_snmb & (anp_snmb$anp != "pinacate")}
-data<-read.csv("../datos_insumo/fauna/DepTopeSinAves.csv", sep=",")
+data<-read.csv("../datos_insumo/fauna/DepTopeSinAves.csv", sep=",") %>% 
+  mutate(Sitio = ifelse(Sitio == "La Encricijada", "La Encrucijada", Sitio))
 # Create dataset
 data<-data%>%dplyr::filter(str_detect(Sitio, regex(anp_snmb$anp, 
-    ignore_case = T)))
+  ignore_case = T)))
 # Set a number of 'empty bar' to add at the end of each group
 empty_bar=3
 to_add = data.frame( matrix(NA, empty_bar*nlevels(data$Compartidas), ncol(data)) )
