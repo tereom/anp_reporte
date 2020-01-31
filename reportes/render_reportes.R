@@ -13,7 +13,7 @@ render_reporte <- function(anp, dir_save = "reportes_html",
 }
 safely_render <- purrr::safely(render_reporte)
 
-render_reporte(anp = "anp_terrestres_2017_NOMBRE_Calakmul")
+render_reporte(anp = "anp_terrestres_2017_NOMBRE_La_Encrucijada")
 
 
 # HTMLs
@@ -26,7 +26,7 @@ anp_nombres_cl <- dplyr::filter(anp_ids, !(anp %in% quitar))
 purrr::walk(anp_nombres_cl$anp, safely_render, 
     dir_save = "2019-08-20_reportes_id07_html")
 
-purrr::walk(anp_nombres_cl$anp, safely_render, 
+purrr::walk(anp_nombres_cl, safely_render, 
     rmd_file = "reportes/prototipo_pdf.Rmd",
     dir_save = "2019-08-20_reportes_id07_pdf", ext = ".pdf")
 
