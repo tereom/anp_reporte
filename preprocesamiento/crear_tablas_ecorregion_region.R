@@ -79,8 +79,8 @@ correr_calcula_area <- function(path_anps_shp) {
 }
 
 anps_area_sinBuffer <- correr_calcula_area("datos_insumo/shapes_anp/anp_sinBuffer")
-anps_area_anillos <- correr_calcula_area("datos_insumo/shapes_anp/anp_zonasnucleo")
-anps_area_zonasnucleo <- correr_calcula_area("datos_insumo/shapes_anp/anp_zonaspreservacion/")
+anps_area_anillos <- correr_calcula_area("datos_insumo/shapes_anp/anp_rings")
+anps_area_zonasnucleo <- correr_calcula_area("datos_insumo/shapes_anp/anp_zonasnucleo/")
 
 # en zonas de preservación falla función calcular_area (en part. el distinct) 
 # para ANP Constitución
